@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/abhirockzz/mcp_cosmosdb_go/common"
 
@@ -35,8 +34,6 @@ func listDatabasesHandler(ctx context.Context, request mcp.CallToolRequest) (*mc
 	if !ok || account == "" {
 		return nil, errors.New("cosmos db account name missing")
 	}
-
-	log.Println("listDatabasesHandler called with account:", account)
 
 	client, err := common.GetCosmosDBClient(account)
 
