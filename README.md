@@ -4,7 +4,7 @@ This is a simple implementation of a MCP server for Cosmos DB built using its [G
 
 Here is a demo (recommend watching at 2x speed 😉) using [VS Code Insiders in Agent mode](https://code.visualstudio.com/blogs/2025/02/24/introducing-copilot-agent-mode):
 
-[![Demo: MCP server for Azure Cosmos DB using the Go SDK](https://img.youtube.com/vi/CsM-mspWJeM/0.jpg)](https://www.youtube.com/watch?v=CsM-mspWJeM)
+[![Demo: MCP server for Azure Cosmos DB using the Go SDK](images/demo.png)](https://www.youtube.com/watch?v=CsM-mspWJeM)
 
 ## How to run
 
