@@ -2,6 +2,16 @@
 
 This is a sample implementation of a MCP server for Cosmos DB built using its [Go SDK](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos). [mcp-go](https://github.com/mark3labs/mcp-go) project has been used as the MCP Go implementation.
 
+This MCP server exposes the following tools for interacting with Azure Cosmos DB:
+
+- **List Databases**: Retrieve a list of all databases in a Cosmos DB account.
+- **List Containers**: Retrieve a list of all containers in a specific database.
+- **Read Container Metadata**: Fetch metadata or configuration details of a specific container.
+- **Create Container**: Create a new container in a specified database with a defined partition key.
+- **Add Item to Container**: Add a new item to a specified container in a database.
+- **Read Item**: Read a specific item from a container using its ID and partition key.
+- **Execute Query**: Execute a SQL query on a Cosmos DB container with optional partition key scoping.
+
 Here is a demo (recommend watching at 2x speed 😉) using [VS Code Insiders in Agent mode](https://code.visualstudio.com/blogs/2025/02/24/introducing-copilot-agent-mode):
 
 [![Demo: MCP server for Azure Cosmos DB using the Go SDK](images/demo.png)](https://www.youtube.com/watch?v=CsM-mspWJeM)
