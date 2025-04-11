@@ -208,7 +208,7 @@ func ReadContainerMetadata(clientRetriever CosmosDBClientRetriever) (mcp.Tool, s
 
 func readContainerMetadata() mcp.Tool {
 
-	return mcp.NewTool("read_container_metadata",
+	return mcp.NewTool(READ_CONTAINER_METADATA_TOOL_NAME,
 		mcp.WithString("account",
 			mcp.Required(),
 			mcp.Description("Name of the Cosmos DB account"),
@@ -268,12 +268,69 @@ func readContainerMetadataHandler(ctx context.Context, request mcp.CallToolReque
 	return mcp.NewToolResultText(string(jsonResult)), nil
 }
 
-func CreateContainer() (mcp.Tool, server.ToolHandlerFunc) {
-	return createContainer(), createContainerHandler
+func CreateContainer(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
+	return createContainer(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		account, ok := request.Params.Arguments["account"].(string)
+		if !ok || account == "" {
+			return nil, errors.New("cosmos db account name missing")
+		}
+		database, ok := request.Params.Arguments["database"].(string)
+		if !ok || database == "" {
+			return nil, errors.New("database name missing")
+		}
+		container, ok := request.Params.Arguments["container"].(string)
+		if !ok || container == "" {
+			return nil, errors.New("container name missing")
+		}
+		partitionKeyPath, ok := request.Params.Arguments["partitionKeyPath"].(string)
+		if !ok || partitionKeyPath == "" {
+			return nil, errors.New("partition key path missing")
+		}
+		throughput, hasThroughput := request.Params.Arguments["throughput"].(int)
+
+		client, err := clientRetriever.Get(account)
+
+		if err != nil {
+			fmt.Printf("Error creating Cosmos client: %v\n", err)
+			return nil, err
+		}
+
+		databaseClient, err := client.NewDatabase(database)
+		if err != nil {
+			return nil, fmt.Errorf("error creating database client: %v", err)
+		}
+		// databaseClient, err := common.GetDatabaseClient(account, database)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error creating database client: %v", err)
+		// }
+
+		properties := azcosmos.ContainerProperties{
+			ID: container,
+			PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
+				Paths: []string{partitionKeyPath},
+				Kind:  azcosmos.PartitionKeyKindHash,
+			},
+		}
+
+		if hasThroughput {
+			throughputProps := azcosmos.NewManualThroughputProperties(int32(throughput))
+			_, err = databaseClient.CreateContainer(ctx, properties, &azcosmos.CreateContainerOptions{
+				ThroughputProperties: &throughputProps,
+			})
+		} else {
+			_, err = databaseClient.CreateContainer(ctx, properties, nil)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("error creating container: %v", err)
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Container '%s' created successfully in database '%s'", container, database)), nil
+	}
 }
 
 func createContainer() mcp.Tool {
-	return mcp.NewTool("create_container",
+	return mcp.NewTool(CREATE_CONTAINER_TOOL_NAME,
 		mcp.WithString("account",
 			mcp.Required(),
 			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),

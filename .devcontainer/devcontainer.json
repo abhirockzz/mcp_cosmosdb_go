@@ -20,6 +20,6 @@
       "extensions": ["golang.Go", "GitHub.copilot"]
     }
   },
-  "postCreateCommand": "go mod tidy",
+  "postCreateCommand": "go mod download",
   "remoteUser": "vscode"
 }

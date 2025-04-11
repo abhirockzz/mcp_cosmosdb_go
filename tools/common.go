@@ -11,6 +11,8 @@ import (
 const ACCOUNT_PARAMETER_DESCRIPTION = "Name of the Cosmos DB account. If not available, ask the user to provide the account name. Do not use a random account name of your choice."
 const LIST_DATABASES_TOOL_NAME = "list_databases"
 const LIST_CONTAINERS_TOOL_NAME = "list_containers"
+const READ_CONTAINER_METADATA_TOOL_NAME = "read_container_metadata"
+const CREATE_CONTAINER_TOOL_NAME = "create_container"
 
 type CosmosDBClientRetriever interface {
 	Get(accountName string) (*azcosmos.Client, error)

@@ -170,7 +170,7 @@ func TestListContainers(t *testing.T) {
 func TestReadContainerMetadata(t *testing.T) {
 	tool, handler := ReadContainerMetadata(CosmosDBEmulatorClientRetriever{})
 
-	assert.Equal(t, tool.Name, "read_container_metadata")
+	assert.Equal(t, tool.Name, READ_CONTAINER_METADATA_TOOL_NAME)
 	assert.NotEmpty(t, tool.Description)
 	assert.Contains(t, tool.InputSchema.Properties, "account")
 	assert.Contains(t, tool.InputSchema.Properties, "database")
@@ -258,6 +258,124 @@ func TestReadContainerMetadata(t *testing.T) {
 			assert.Contains(t, metadata, "indexing_policy")
 			assert.Contains(t, metadata, "partition_key_definition")
 			assert.Contains(t, metadata, "conflict_resolution_policy")
+		})
+	}
+}
+
+func TestCreateContainer(t *testing.T) {
+	tool, handler := CreateContainer(CosmosDBEmulatorClientRetriever{})
+
+	assert.Equal(t, tool.Name, CREATE_CONTAINER_TOOL_NAME)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "account")
+	assert.Contains(t, tool.InputSchema.Properties, "database")
+	assert.Contains(t, tool.InputSchema.Properties, "container")
+	assert.Contains(t, tool.InputSchema.Properties, "partitionKeyPath")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"account", "database", "container", "partitionKeyPath"})
+
+	tests := []struct {
+		name           string
+		arguments      map[string]interface{}
+		expectedResult string
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "valid arguments",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         testOperationDBName,
+				"container":        "testContainer_new_1",
+				"partitionKeyPath": "/id",
+			},
+			expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_1", testOperationDBName),
+			expectError:    false,
+		},
+		{
+			name: "valid arguments with throughput",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         testOperationDBName,
+				"container":        "testContainer_new_2",
+				"partitionKeyPath": "/id",
+				"throughput":       1000,
+			},
+			expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_2", testOperationDBName),
+			expectError:    false,
+		},
+		{
+			name: "empty account name",
+			arguments: map[string]interface{}{
+				"account":          "",
+				"database":         testOperationDBName,
+				"container":        "testContainer",
+				"partitionKeyPath": "/id",
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db account name missing",
+		},
+		{
+			name: "empty database name",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         "",
+				"container":        "testContainer",
+				"partitionKeyPath": "/id",
+			},
+			expectError:    true,
+			expectedErrMsg: "database name missing",
+		},
+		{
+			name: "empty container name",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         testOperationDBName,
+				"container":        "",
+				"partitionKeyPath": "/id",
+			},
+			expectError:    true,
+			expectedErrMsg: "container name missing",
+		},
+		{
+			name: "empty partition key path",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         testOperationDBName,
+				"container":        "testContainer",
+				"partitionKeyPath": "",
+			},
+			expectError:    true,
+			expectedErrMsg: "partition key path missing",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: struct {
+					Name      string                 `json:"name"`
+					Arguments map[string]interface{} `json:"arguments,omitempty"`
+					Meta      *struct {
+						ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+					} `json:"_meta,omitempty"`
+				}{
+					Arguments: test.arguments,
+				},
+			}
+
+			result, err := handler(context.Background(), req)
+			if test.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			textResult := getTextFromToolResult(t, result)
+			assert.Equal(t, test.expectedResult, textResult)
+			// assert.Contains(t, textResult, "Container '")
+			// assert.Contains(t, textResult, "created successfully in database '")
 		})
 	}
 }
