@@ -46,6 +46,7 @@ func TestListDatabases(t *testing.T) {
 	err = json.Unmarshal([]byte(textResult), &response)
 	require.NoError(t, err)
 	assert.Equal(t, len(response.Databases), 1)
+	assert.Equal(t, response.Databases[0], testOperationDBName)
 
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+	"github.com/docker/go-connections/nat"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,13 +43,10 @@ func setupCosmosEmulator(ctx context.Context) (testcontainers.Container, error) 
 	req := testcontainers.ContainerRequest{
 		Image:        emulatorImage,
 		ExposedPorts: []string{emulatorPort + ":8081", "10250-10255:10250-10255"},
-		WaitingFor:   wait.ForHTTP("/").WithPort("8081/tcp").WithStartupTimeout(2*time.Minute).WithTLS(true, &tls.Config{InsecureSkipVerify: true}),
-		// WaitingFor: wait.ForAll(
-		// 	wait.ForListeningPort(nat.Port(emulatorPort)).WithStartupTimeout(2*time.Minute),
-		// 	wait.ForHttp("/all").usingTls(),
-		// 	//wait.WithStartupTimeout(2*time.Minute),
-		// 	//wait.ForLog("Started").WithStartupTimeout(2*time.Minute),
-		// )
+		WaitingFor:   wait.ForListeningPort(nat.Port(emulatorPort)),
+		Env: map[string]string{
+			"AZURE_COSMOS_EMULATOR_PARTITION_COUNT": "1",
+		},
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
