@@ -16,7 +16,7 @@ func main() {
 		server.WithLogging(),
 	)
 
-	s.AddTool(tools.ListDatabases())
+	s.AddTool(tools.ListDatabases(tools.CosmosDBServiceClientRetriever{}))
 	s.AddTool(tools.ListContainers())
 	s.AddTool(tools.ReadContainerMetadata())
 	s.AddTool(tools.CreateContainer())
