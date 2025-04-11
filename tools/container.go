@@ -14,9 +14,74 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-func ListContainers() (mcp.Tool, server.ToolHandlerFunc) {
+func ListContainers(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
 
-	return listContainers(), listContainersHandler
+	return listContainers(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+		account, ok := request.Params.Arguments["account"].(string)
+		if !ok || account == "" {
+			return nil, errors.New("cosmos db account name missing")
+		}
+		database, ok := request.Params.Arguments["database"].(string)
+		if !ok || database == "" {
+			return nil, errors.New("database name missing")
+		}
+
+		client, err := clientRetriever.Get(account)
+
+		if err != nil {
+			fmt.Printf("Error creating Cosmos client: %v\n", err)
+			return nil, err
+		}
+
+		databaseClient, err := client.NewDatabase(database)
+		if err != nil {
+			return nil, fmt.Errorf("error creating database client: %v", err)
+		}
+		// databaseClient, err := common.GetDatabaseClient(account, database)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error creating Cosmos client: %v", err)
+		// }
+
+		containerPager := databaseClient.NewQueryContainersPager("select * from c", nil)
+
+		containerNames := []string{}
+
+		for containerPager.More() {
+			containerResponse, err := containerPager.NextPage(context.Background())
+			if err != nil {
+				var responseErr *azcore.ResponseError
+				errors.As(err, &responseErr)
+				return nil, err
+			}
+
+			for _, container := range containerResponse.Containers {
+				containerNames = append(containerNames, container.ID)
+			}
+		}
+
+		// result := map[string]interface{}{
+		// 	"containers": containerNames,
+		// }
+
+		jsonResult, err := json.Marshal(ListContainersResponse{
+			Account:    account,
+			Database:   database,
+			Containers: containerNames,
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling result to JSON: %v", err)
+		}
+
+		return mcp.NewToolResultText(string(jsonResult)), nil
+	}
+}
+
+type ListContainersResponse struct {
+	Account    string
+	Database   string
+	Containers []string `json:"containers"`
 }
 
 func listContainers() mcp.Tool {
@@ -79,8 +144,66 @@ func listContainersHandler(ctx context.Context, request mcp.CallToolRequest) (*m
 	return mcp.NewToolResultText(string(jsonResult)), nil
 }
 
-func ReadContainerMetadata() (mcp.Tool, server.ToolHandlerFunc) {
-	return readContainerMetadata(), readContainerMetadataHandler
+func ReadContainerMetadata(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
+	return readContainerMetadata(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+		account, ok := request.Params.Arguments["account"].(string)
+		if !ok || account == "" {
+			return nil, errors.New("cosmos db account name missing")
+		}
+		database, ok := request.Params.Arguments["database"].(string)
+		if !ok || database == "" {
+			return nil, errors.New("database name missing")
+		}
+		container, ok := request.Params.Arguments["container"].(string)
+		if !ok || container == "" {
+			return nil, errors.New("container name missing")
+		}
+
+		client, err := clientRetriever.Get(account)
+
+		if err != nil {
+			fmt.Printf("Error creating Cosmos client: %v\n", err)
+			return nil, err
+		}
+
+		databaseClient, err := client.NewDatabase(database)
+		if err != nil {
+			return nil, fmt.Errorf("error creating database client: %v", err)
+		}
+
+		containerClient, err := databaseClient.NewContainer(container)
+		if err != nil {
+			return nil, fmt.Errorf("error creating container client: %v", err)
+		}
+
+		// containerClient, err := common.GetContainerClient(account, database, container)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error creating container client: %v", err)
+		// }
+
+		response, err := containerClient.Read(context.Background(), nil)
+		if err != nil {
+			var responseErr *azcore.ResponseError
+			errors.As(err, &responseErr)
+			return nil, err
+		}
+
+		metadata := map[string]interface{}{
+			"container_id":               response.ContainerProperties.ID,
+			"default_ttl":                response.ContainerProperties.DefaultTimeToLive,
+			"indexing_policy":            response.ContainerProperties.IndexingPolicy,
+			"partition_key_definition":   response.ContainerProperties.PartitionKeyDefinition,
+			"conflict_resolution_policy": response.ContainerProperties.ConflictResolutionPolicy,
+		}
+
+		jsonResult, err := json.Marshal(metadata)
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling result to JSON: %v", err)
+		}
+
+		return mcp.NewToolResultText(string(jsonResult)), nil
+	}
 }
 
 func readContainerMetadata() mcp.Tool {
