@@ -35,7 +35,7 @@ const (
 
 var (
 	emulator testcontainers.Container
-	client   *azcosmos.Client
+	//client   *azcosmos.Client
 )
 
 // setupCosmosEmulator creates a CosmosDB emulator container for testing

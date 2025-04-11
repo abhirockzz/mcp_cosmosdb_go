@@ -167,6 +167,101 @@ func TestListContainers(t *testing.T) {
 	}
 }
 
+func TestReadContainerMetadata(t *testing.T) {
+	tool, handler := ReadContainerMetadata(CosmosDBEmulatorClientRetriever{})
+
+	assert.Equal(t, tool.Name, "read_container_metadata")
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "account")
+	assert.Contains(t, tool.InputSchema.Properties, "database")
+	assert.Contains(t, tool.InputSchema.Properties, "container")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"account", "database", "container"})
+
+	tests := []struct {
+		name           string
+		arguments      map[string]interface{}
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "valid arguments",
+			arguments: map[string]interface{}{
+				"account":   dummy_account_does_not_matter,
+				"database":  testOperationDBName,
+				"container": testOperationContainerName,
+			},
+			expectError: false,
+		},
+		{
+			name: "empty account name",
+			arguments: map[string]interface{}{
+				"account":   "",
+				"database":  testOperationDBName,
+				"container": testOperationContainerName,
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db account name missing",
+		},
+		{
+			name: "empty database name",
+			arguments: map[string]interface{}{
+				"account":   dummy_account_does_not_matter,
+				"database":  "",
+				"container": testOperationContainerName,
+			},
+			expectError:    true,
+			expectedErrMsg: "database name missing",
+		},
+		{
+			name: "empty container name",
+			arguments: map[string]interface{}{
+				"account":   dummy_account_does_not_matter,
+				"database":  testOperationDBName,
+				"container": "",
+			},
+			expectError:    true,
+			expectedErrMsg: "container name missing",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: struct {
+					Name      string                 `json:"name"`
+					Arguments map[string]interface{} `json:"arguments,omitempty"`
+					Meta      *struct {
+						ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+					} `json:"_meta,omitempty"`
+				}{
+					Arguments: test.arguments,
+				},
+			}
+
+			result, err := handler(context.Background(), req)
+			if test.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			textResult := getTextFromToolResult(t, result)
+
+			var metadata map[string]interface{}
+			err = json.Unmarshal([]byte(textResult), &metadata)
+			require.NoError(t, err)
+
+			assert.Contains(t, metadata, "container_id")
+			assert.Contains(t, metadata, "default_ttl")
+			assert.Contains(t, metadata, "indexing_policy")
+			assert.Contains(t, metadata, "partition_key_definition")
+			assert.Contains(t, metadata, "conflict_resolution_policy")
+		})
+	}
+}
+
 func TestMain(m *testing.M) {
 	// Set up the CosmosDB emulator container
 	ctx := context.Background()
@@ -178,7 +273,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Set up the CosmosDB client
-	client, err = CosmosDBEmulatorClientRetriever{}.Get(dummy_account_does_not_matter)
+	client, err := CosmosDBEmulatorClientRetriever{}.Get(dummy_account_does_not_matter)
 	if err != nil {
 		fmt.Printf("Failed to set up CosmosDB client: %v\n", err)
 		os.Exit(1)
