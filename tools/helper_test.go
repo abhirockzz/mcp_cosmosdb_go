@@ -24,7 +24,7 @@ import (
 const (
 	testOperationDBName        = "testDatabase"
 	testOperationContainerName = "testContainer"
-	testPartitionKey           = "/userid"
+	testPartitionKey           = "/id"
 	//emulatorImage              = "mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview"
 	emulatorImage    = "mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest"
 	emulatorPort     = "8081"
@@ -113,7 +113,7 @@ func setupDatabaseAndContainer(ctx context.Context, client *azcosmos.Client) err
 	containerProps := azcosmos.ContainerProperties{
 		ID: testOperationContainerName,
 		PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
-			Paths: []string{"/userid"},
+			Paths: []string{testPartitionKey},
 		},
 		DefaultTimeToLive: to.Ptr[int32](60), // Short TTL for test data (60 seconds)
 	}

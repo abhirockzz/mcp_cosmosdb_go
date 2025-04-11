@@ -292,18 +292,6 @@ func TestCreateContainer(t *testing.T) {
 			expectError:    false,
 		},
 		{
-			name: "valid arguments with throughput",
-			arguments: map[string]interface{}{
-				"account":          dummy_account_does_not_matter,
-				"database":         testOperationDBName,
-				"container":        "testContainer_new_2",
-				"partitionKeyPath": "/id",
-				"throughput":       400,
-			},
-			expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_2", testOperationDBName),
-			expectError:    false,
-		},
-		{
 			name: "empty account name",
 			arguments: map[string]interface{}{
 				"account":          "",
@@ -346,6 +334,18 @@ func TestCreateContainer(t *testing.T) {
 			},
 			expectError:    true,
 			expectedErrMsg: "partition key path missing",
+		},
+		{
+			name: "valid arguments with throughput",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         testOperationDBName,
+				"container":        "testContainer_new_2",
+				"partitionKeyPath": "/id",
+				"throughput":       400,
+			},
+			expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_2", testOperationDBName),
+			expectError:    false,
 		},
 	}
 
