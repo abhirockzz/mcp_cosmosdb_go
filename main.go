@@ -20,7 +20,7 @@ func main() {
 	s.AddTool(tools.ListContainers(tools.CosmosDBServiceClientRetriever{}))
 	s.AddTool(tools.ReadContainerMetadata(tools.CosmosDBServiceClientRetriever{}))
 	s.AddTool(tools.CreateContainer(tools.CosmosDBServiceClientRetriever{}))
-	s.AddTool(tools.AddItemToContainer())
+	s.AddTool(tools.AddItemToContainer(tools.CosmosDBServiceClientRetriever{}))
 	s.AddTool(tools.ReadItem())
 	s.AddTool(tools.ExecuteQuery())
 

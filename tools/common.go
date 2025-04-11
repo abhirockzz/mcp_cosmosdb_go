@@ -13,6 +13,7 @@ const LIST_DATABASES_TOOL_NAME = "list_databases"
 const LIST_CONTAINERS_TOOL_NAME = "list_containers"
 const READ_CONTAINER_METADATA_TOOL_NAME = "read_container_metadata"
 const CREATE_CONTAINER_TOOL_NAME = "create_container"
+const ADD_CONTAINER_ITEM_TOOL_NAME = "add_item_to_container"
 
 type CosmosDBClientRetriever interface {
 	Get(accountName string) (*azcosmos.Client, error)

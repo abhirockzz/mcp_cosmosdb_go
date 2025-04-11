@@ -298,7 +298,7 @@ func TestCreateContainer(t *testing.T) {
 				"database":         testOperationDBName,
 				"container":        "testContainer_new_2",
 				"partitionKeyPath": "/id",
-				"throughput":       1000,
+				"throughput":       400,
 			},
 			expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_2", testOperationDBName),
 			expectError:    false,
@@ -376,6 +376,152 @@ func TestCreateContainer(t *testing.T) {
 			assert.Equal(t, test.expectedResult, textResult)
 			// assert.Contains(t, textResult, "Container '")
 			// assert.Contains(t, textResult, "created successfully in database '")
+		})
+	}
+}
+
+func TestAddItemToContainer(t *testing.T) {
+	tool, handler := AddItemToContainer(CosmosDBEmulatorClientRetriever{})
+
+	assert.Equal(t, tool.Name, ADD_CONTAINER_ITEM_TOOL_NAME)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "account")
+	assert.Contains(t, tool.InputSchema.Properties, "database")
+	assert.Contains(t, tool.InputSchema.Properties, "container")
+	assert.Contains(t, tool.InputSchema.Properties, "partitionKey")
+	assert.Contains(t, tool.InputSchema.Properties, "item")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"account", "database", "container", "partitionKey", "item"})
+
+	tests := []struct {
+		name           string
+		arguments      map[string]interface{}
+		expectError    bool
+		expectedResult string
+		expectedErrMsg string
+	}{
+		{
+			name: "valid arguments",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": "user1",
+				"item":         `{"id": "user1", "value": "user1@foo.com"}`,
+			},
+			expectedResult: fmt.Sprintf("Item added successfully to container '%s' in database '%s'", testOperationContainerName, testOperationDBName),
+			expectError:    false,
+		},
+		{
+			name: "invalid partition key",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": "1",
+				"item":         `{"id": "testItem", "value": "testValue"}`,
+			},
+			expectError:    true,
+			expectedErrMsg: "error adding item to container",
+		},
+		{
+			name: "missing id attribute",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": "1",
+				"item":         `{"value": "testValue"}`,
+			},
+			expectError:    true,
+			expectedErrMsg: "error adding item to container",
+		},
+		{
+			name: "empty account name",
+			arguments: map[string]interface{}{
+				"account":      "",
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": "testPartitionKey",
+				"item":         `{"id": "testItem", "value": "testValue"}`,
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db account name missing",
+		},
+		{
+			name: "empty database name",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     "",
+				"container":    testOperationContainerName,
+				"partitionKey": "testPartitionKey",
+				"item":         `{"id": "testItem", "value": "testValue"}`,
+			},
+			expectError:    true,
+			expectedErrMsg: "database name missing",
+		},
+		{
+			name: "empty container name",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    "",
+				"partitionKey": "testPartitionKey",
+				"item":         `{"id": "testItem", "value": "testValue"}`,
+			},
+			expectError:    true,
+			expectedErrMsg: "container name missing",
+		},
+		{
+			name: "empty partition key",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": "",
+				"item":         `{"id": "testItem", "value": "testValue"}`,
+			},
+			expectError:    true,
+			expectedErrMsg: "value for partition key missing",
+		},
+		{
+			name: "empty item",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": "testPartitionKey",
+				"item":         "",
+			},
+			expectError:    true,
+			expectedErrMsg: "item JSON missing",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: struct {
+					Name      string                 `json:"name"`
+					Arguments map[string]interface{} `json:"arguments,omitempty"`
+					Meta      *struct {
+						ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+					} `json:"_meta,omitempty"`
+				}{
+					Arguments: test.arguments,
+				},
+			}
+
+			result, err := handler(context.Background(), req)
+			if test.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			textResult := getTextFromToolResult(t, result)
+			assert.Equal(t, test.expectedResult, textResult)
 		})
 	}
 }

@@ -402,12 +402,78 @@ func createContainerHandler(ctx context.Context, request mcp.CallToolRequest) (*
 	return mcp.NewToolResultText(fmt.Sprintf("Container '%s' created successfully in database '%s'", container, database)), nil
 }
 
-func AddItemToContainer() (mcp.Tool, server.ToolHandlerFunc) {
-	return addItemToContainer(), addItemToContainerHandler
+func AddItemToContainer(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
+	return addItemToContainer(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+		account, ok := request.Params.Arguments["account"].(string)
+		if !ok || account == "" {
+			return nil, errors.New("cosmos db account name missing")
+		}
+		database, ok := request.Params.Arguments["database"].(string)
+		if !ok || database == "" {
+			return nil, errors.New("database name missing")
+		}
+		container, ok := request.Params.Arguments["container"].(string)
+		if !ok || container == "" {
+			return nil, errors.New("container name missing")
+		}
+		partitionKeyValue, ok := request.Params.Arguments["partitionKey"].(string)
+		if !ok || partitionKeyValue == "" {
+			return nil, errors.New("value for partition key missing")
+		}
+		itemJSON, ok := request.Params.Arguments["item"].(string)
+		if !ok || itemJSON == "" {
+			return nil, errors.New("item JSON missing")
+		}
+
+		// var item map[string]interface{}
+		// if err := json.Unmarshal([]byte(itemJSON), &item); err != nil {
+		// 	return nil, fmt.Errorf("error unmarshalling item JSON: %v", err)
+		// }
+
+		client, err := clientRetriever.Get(account)
+
+		if err != nil {
+			fmt.Printf("Error creating Cosmos client: %v\n", err)
+			return nil, err
+		}
+
+		databaseClient, err := client.NewDatabase(database)
+		if err != nil {
+			return nil, fmt.Errorf("error creating database client: %v", err)
+		}
+
+		containerClient, err := databaseClient.NewContainer(container)
+		if err != nil {
+			return nil, fmt.Errorf("error creating container client: %v", err)
+		}
+
+		partitionKey := azcosmos.NewPartitionKeyString(partitionKeyValue)
+		// itemBytes, err := json.Marshal(item)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error marshalling item to JSON: %v", err)
+		// }
+
+		_, err = containerClient.CreateItem(ctx, partitionKey, []byte(itemJSON), nil)
+		if err != nil {
+			return nil, fmt.Errorf("error adding item to container: %v", err)
+		}
+
+		// var response map[string]interface{}
+		// err = json.Unmarshal(createItemResponse.Value, &response)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error un-marshalling result: %v", err)
+		// }
+
+		return mcp.NewToolResultText(fmt.Sprintf("Item added successfully to container '%s' in database '%s'", container, database)), nil
+
+		// return mcp.NewToolResultText(string(createItemResponse.Value)), nil
+	}
+
 }
 
 func addItemToContainer() mcp.Tool {
-	return mcp.NewTool("add_item_to_container",
+	return mcp.NewTool(ADD_CONTAINER_ITEM_TOOL_NAME,
 		mcp.WithString("account",
 			mcp.Required(),
 			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),
