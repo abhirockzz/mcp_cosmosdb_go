@@ -21,8 +21,8 @@ func main() {
 	s.AddTool(tools.ReadContainerMetadata(tools.CosmosDBServiceClientRetriever{}))
 	s.AddTool(tools.CreateContainer(tools.CosmosDBServiceClientRetriever{}))
 	s.AddTool(tools.AddItemToContainer(tools.CosmosDBServiceClientRetriever{}))
-	s.AddTool(tools.ReadItem())
-	s.AddTool(tools.ExecuteQuery())
+	s.AddTool(tools.ReadItem(tools.CosmosDBServiceClientRetriever{}))
+	s.AddTool(tools.ExecuteQuery(tools.CosmosDBServiceClientRetriever{}))
 
 	//fmt.Println("starting mcp go server for cosmosdb")
 

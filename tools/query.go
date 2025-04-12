@@ -14,14 +14,14 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-func ExecuteQuery() (mcp.Tool, server.ToolHandlerFunc) {
+func ExecuteQuery(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
 
 	return execute_query(), executeQueryHandler
 }
 
 func execute_query() mcp.Tool {
 
-	return mcp.NewTool("execute_query",
+	return mcp.NewTool(EXECUTE_QUERY_TOOL_NAME,
 		mcp.WithString("account",
 			mcp.Required(),
 			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),
@@ -104,14 +104,71 @@ func executeQueryHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp
 	return mcp.NewToolResultText(string(jsonResult)), nil
 }
 
-func ReadItem() (mcp.Tool, server.ToolHandlerFunc) {
+func ReadItem(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
 
-	return readItem(), readItemHandler
+	return readItem(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+		account, ok := request.Params.Arguments["account"].(string)
+		if !ok || account == "" {
+			return nil, errors.New("cosmos db account name missing")
+		}
+		database, ok := request.Params.Arguments["database"].(string)
+		if !ok || database == "" {
+			return nil, errors.New("database name missing")
+		}
+		container, ok := request.Params.Arguments["container"].(string)
+		if !ok || container == "" {
+			return nil, errors.New("container name missing")
+		}
+		itemID, ok := request.Params.Arguments["itemID"].(string)
+		if !ok || itemID == "" {
+			return nil, errors.New("item ID missing")
+		}
+		partitionKeyValue, ok := request.Params.Arguments["partitionKey"].(string)
+		if !ok || partitionKeyValue == "" {
+			return nil, errors.New("partition key missing")
+		}
+
+		client, err := clientRetriever.Get(account)
+
+		if err != nil {
+			fmt.Printf("Error creating Cosmos client: %v\n", err)
+			return nil, err
+		}
+
+		databaseClient, err := client.NewDatabase(database)
+		if err != nil {
+			return nil, fmt.Errorf("error creating database client: %v", err)
+		}
+
+		containerClient, err := databaseClient.NewContainer(container)
+		if err != nil {
+			return nil, fmt.Errorf("error creating container client: %v", err)
+		}
+
+		partitionKey := azcosmos.NewPartitionKeyString(partitionKeyValue)
+		itemResponse, err := containerClient.ReadItem(ctx, partitionKey, itemID, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error reading item: %v", err)
+		}
+
+		// var item map[string]interface{}
+		// if err := json.Unmarshal(itemResponse.Value, &item); err != nil {
+		// 	return nil, fmt.Errorf("error unmarshalling item: %v", err)
+		// }
+
+		// jsonResult, err := json.Marshal(item)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error marshalling item to JSON: %v", err)
+		// }
+
+		return mcp.NewToolResultText(string(itemResponse.Value)), nil
+	}
 }
 
 func readItem() mcp.Tool {
 
-	return mcp.NewTool("read_item",
+	return mcp.NewTool(READ_ITEM_TOOL_NAME,
 		mcp.WithString("account",
 			mcp.Required(),
 			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),

@@ -526,6 +526,158 @@ func TestAddItemToContainer(t *testing.T) {
 	}
 }
 
+func TestReadItem(t *testing.T) {
+	tool, handler := ReadItem(CosmosDBEmulatorClientRetriever{})
+
+	assert.Equal(t, tool.Name, READ_ITEM_TOOL_NAME)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "account")
+	assert.Contains(t, tool.InputSchema.Properties, "database")
+	assert.Contains(t, tool.InputSchema.Properties, "container")
+	assert.Contains(t, tool.InputSchema.Properties, "itemID")
+	assert.Contains(t, tool.InputSchema.Properties, "partitionKey")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"account", "database", "container", "itemID", "partitionKey"})
+
+	id := "user1"
+	partitionKeyValue := "user1"
+
+	tool, addItemHandler := AddItemToContainer(CosmosDBEmulatorClientRetriever{})
+
+	// need to add an item to the container first
+	_, err := addItemHandler(context.Background(), mcp.CallToolRequest{
+		Params: struct {
+			Name      string                 `json:"name"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+			Meta      *struct {
+				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+			} `json:"_meta,omitempty"`
+		}{
+			Arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": partitionKeyValue,
+				"item":         `{"id": "user1", "value": "user1@foo.com"}`,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		arguments      map[string]interface{}
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "valid arguments",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"itemID":       id,
+				"partitionKey": partitionKeyValue,
+			},
+			expectError: false,
+		},
+		{
+			name: "empty account name",
+			arguments: map[string]interface{}{
+				"account":      "",
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"itemID":       "testItem",
+				"partitionKey": "testPartitionKey",
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db account name missing",
+		},
+		{
+			name: "empty database name",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     "",
+				"container":    testOperationContainerName,
+				"itemID":       "testItem",
+				"partitionKey": "testPartitionKey",
+			},
+			expectError:    true,
+			expectedErrMsg: "database name missing",
+		},
+		{
+			name: "empty container name",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    "",
+				"itemID":       "testItem",
+				"partitionKey": "testPartitionKey",
+			},
+			expectError:    true,
+			expectedErrMsg: "container name missing",
+		},
+		{
+			name: "empty item ID",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"itemID":       "",
+				"partitionKey": "testPartitionKey",
+			},
+			expectError:    true,
+			expectedErrMsg: "item ID missing",
+		},
+		{
+			name: "empty partition key",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"itemID":       "testItem",
+				"partitionKey": "",
+			},
+			expectError:    true,
+			expectedErrMsg: "partition key missing",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: struct {
+					Name      string                 `json:"name"`
+					Arguments map[string]interface{} `json:"arguments,omitempty"`
+					Meta      *struct {
+						ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+					} `json:"_meta,omitempty"`
+				}{
+					Arguments: test.arguments,
+				},
+			}
+
+			result, err := handler(context.Background(), req)
+			if test.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			textResult := getTextFromToolResult(t, result)
+			assert.NotEmpty(t, textResult)
+
+			var item map[string]interface{}
+			err = json.Unmarshal([]byte(textResult), &item)
+
+			require.NoError(t, err)
+			assert.Equal(t, id, item["id"].(string))
+		})
+	}
+}
+
 func TestMain(m *testing.M) {
 	// Set up the CosmosDB emulator container
 	ctx := context.Background()
