@@ -46,10 +46,6 @@ func ListDatabases(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.To
 			}
 		}
 
-		// result := map[string]interface{}{
-		// 	"databases": databaseNames,
-		// }
-
 		jsonResult, err := json.Marshal(ListDatabasesResponse{Databases: databaseNames})
 		if err != nil {
 			return nil, fmt.Errorf("error marshalling result to JSON: %v", err)

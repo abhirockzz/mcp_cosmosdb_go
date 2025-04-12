@@ -29,19 +29,17 @@ const (
 	emulatorImage    = "mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest"
 	emulatorPort     = "8081"
 	emulatorEndpoint = "https://localhost:8081"
-	//emulatorKey      = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
-	emulatorKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
+	emulatorKey      = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
 )
 
 var (
 	emulator testcontainers.Container
-	//client   *azcosmos.Client
 )
 
 // setupCosmosEmulator creates a CosmosDB emulator container for testing
 func setupCosmosEmulator(ctx context.Context) (testcontainers.Container, error) {
 	req := testcontainers.ContainerRequest{
-		Image:        emulatorImage,
+		Image: emulatorImage,
 		//ExposedPorts: []string{emulatorPort + ":8081", "10250-10255:10250-10255"},
 		ExposedPorts: []string{emulatorPort + ":8081"},
 		WaitingFor:   wait.ForListeningPort(nat.Port(emulatorPort)),
@@ -136,6 +134,17 @@ func isResourceExistsError(err error) bool {
 	return false
 }
 
+func getTextFromToolResult(t *testing.T, result *mcp.CallToolResult) string {
+	t.Helper()
+	content := result.Content[0]
+	text, _ := result.Content[0].(mcp.TextContent)
+	assert.NotNil(t, content)
+	require.IsType(t, mcp.TextContent{}, content)
+	assert.Equal(t, "text", text.Type)
+
+	return text.Text
+}
+
 // cleanupTestData removes test data after tests
 func cleanupTestData(ctx context.Context, t *testing.T, client *azcosmos.Client, userID, sessionID string) {
 	t.Helper()
@@ -151,15 +160,4 @@ func cleanupTestData(ctx context.Context, t *testing.T, client *azcosmos.Client,
 
 	// Delete the test item
 	_, _ = container.DeleteItem(ctx, azcosmos.NewPartitionKeyString(userID), sessionID, nil)
-}
-
-func getTextFromToolResult(t *testing.T, result *mcp.CallToolResult) string {
-	t.Helper()
-	content := result.Content[0]
-	text, _ := result.Content[0].(mcp.TextContent)
-	assert.NotNil(t, content)
-	require.IsType(t, mcp.TextContent{}, content)
-	assert.Equal(t, "text", text.Type)
-
-	return text.Text
 }
