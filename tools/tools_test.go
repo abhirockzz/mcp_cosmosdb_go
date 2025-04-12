@@ -538,8 +538,8 @@ func TestReadItem(t *testing.T) {
 	assert.Contains(t, tool.InputSchema.Properties, "partitionKey")
 	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"account", "database", "container", "itemID", "partitionKey"})
 
-	id := "user1"
-	partitionKeyValue := "user1"
+	id := "user2"
+	partitionKeyValue := "user2"
 
 	tool, addItemHandler := AddItemToContainer(CosmosDBEmulatorClientRetriever{})
 
@@ -557,7 +557,7 @@ func TestReadItem(t *testing.T) {
 				"database":     testOperationDBName,
 				"container":    testOperationContainerName,
 				"partitionKey": partitionKeyValue,
-				"item":         `{"id": "user1", "value": "user1@foo.com"}`,
+				"item":         `{"id": "user2", "value": "user2@foo.com"}`,
 			},
 		},
 	})
@@ -674,6 +674,141 @@ func TestReadItem(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, id, item["id"].(string))
+		})
+	}
+}
+
+func TestExecuteQuery(t *testing.T) {
+	tool, handler := ExecuteQuery(CosmosDBEmulatorClientRetriever{})
+
+	assert.Equal(t, tool.Name, EXECUTE_QUERY_TOOL_NAME)
+	assert.NotEmpty(t, tool.Description)
+	assert.Contains(t, tool.InputSchema.Properties, "account")
+	assert.Contains(t, tool.InputSchema.Properties, "database")
+	assert.Contains(t, tool.InputSchema.Properties, "container")
+	assert.Contains(t, tool.InputSchema.Properties, "query")
+	assert.ElementsMatch(t, tool.InputSchema.Required, []string{"account", "database", "container", "query"})
+
+	//id := "user3"
+	partitionKeyValue := "user3"
+
+	tool, addItemHandler := AddItemToContainer(CosmosDBEmulatorClientRetriever{})
+
+	// need to add an item to the container first
+	_, err := addItemHandler(context.Background(), mcp.CallToolRequest{
+		Params: struct {
+			Name      string                 `json:"name"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+			Meta      *struct {
+				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+			} `json:"_meta,omitempty"`
+		}{
+			Arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"partitionKey": partitionKeyValue,
+				"item":         `{"id": "user3", "value": "user3@foo.com"}`,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		arguments      map[string]interface{}
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "valid arguments",
+			arguments: map[string]interface{}{
+				"account":      dummy_account_does_not_matter,
+				"database":     testOperationDBName,
+				"container":    testOperationContainerName,
+				"query":        "SELECT * FROM c",
+				"partitionKey": partitionKeyValue,
+			},
+			expectError: false,
+		},
+		{
+			name: "empty account name",
+			arguments: map[string]interface{}{
+				"account":   "",
+				"database":  testOperationDBName,
+				"container": testOperationContainerName,
+				"query":     "SELECT * FROM c",
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db account name missing",
+		},
+		{
+			name: "empty database name",
+			arguments: map[string]interface{}{
+				"account":   dummy_account_does_not_matter,
+				"database":  "",
+				"container": testOperationContainerName,
+				"query":     "SELECT * FROM c",
+			},
+			expectError:    true,
+			expectedErrMsg: "database name missing",
+		},
+		{
+			name: "empty container name",
+			arguments: map[string]interface{}{
+				"account":   dummy_account_does_not_matter,
+				"database":  testOperationDBName,
+				"container": "",
+				"query":     "SELECT * FROM c",
+			},
+			expectError:    true,
+			expectedErrMsg: "container name missing",
+		},
+		{
+			name: "empty query string",
+			arguments: map[string]interface{}{
+				"account":   dummy_account_does_not_matter,
+				"database":  testOperationDBName,
+				"container": testOperationContainerName,
+				"query":     "",
+			},
+			expectError:    true,
+			expectedErrMsg: "query string missing",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: struct {
+					Name      string                 `json:"name"`
+					Arguments map[string]interface{} `json:"arguments,omitempty"`
+					Meta      *struct {
+						ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+					} `json:"_meta,omitempty"`
+				}{
+					Arguments: test.arguments,
+				},
+			}
+
+			result, err := handler(context.Background(), req)
+			if test.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			textResult := getTextFromToolResult(t, result)
+			assert.NotEmpty(t, textResult)
+
+			var response ExecuteQueryResponse
+			err = json.Unmarshal([]byte(textResult), &response)
+			require.NoError(t, err)
+			assert.NotEmpty(t, response.QueryResults)
+			assert.NotEmpty(t, response.QueryMetrics)
 		})
 	}
 }

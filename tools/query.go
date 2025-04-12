@@ -16,7 +16,84 @@ import (
 
 func ExecuteQuery(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
 
-	return execute_query(), executeQueryHandler
+	return execute_query(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+		account, ok := request.Params.Arguments["account"].(string)
+		if !ok || account == "" {
+			return nil, errors.New("cosmos db account name missing")
+		}
+		database, ok := request.Params.Arguments["database"].(string)
+		if !ok || database == "" {
+			return nil, errors.New("database name missing")
+		}
+		container, ok := request.Params.Arguments["container"].(string)
+		if !ok || container == "" {
+			return nil, errors.New("container name missing")
+		}
+		query, ok := request.Params.Arguments["query"].(string)
+		if !ok || query == "" {
+			return nil, errors.New("query string missing")
+		}
+
+		partitionKeyValue, hasPartitionKey := request.Params.Arguments["partitionKey"].(string)
+
+		client, err := clientRetriever.Get(account)
+
+		if err != nil {
+			fmt.Printf("Error creating Cosmos client: %v\n", err)
+			return nil, err
+		}
+
+		databaseClient, err := client.NewDatabase(database)
+		if err != nil {
+			return nil, fmt.Errorf("error creating database client: %v", err)
+		}
+
+		containerClient, err := databaseClient.NewContainer(container)
+		if err != nil {
+			return nil, fmt.Errorf("error creating container client: %v", err)
+		}
+
+		var partitionKey azcosmos.PartitionKey
+		if hasPartitionKey {
+			partitionKey = azcosmos.NewPartitionKeyString(partitionKeyValue)
+		} else {
+			partitionKey = azcosmos.PartitionKey{} // Empty partition key for cross-partition queries
+		}
+
+		queryPager := containerClient.NewQueryItemsPager(query, partitionKey, nil)
+
+		var response ExecuteQueryResponse
+
+		for queryPager.More() {
+			queryResponse, err := queryPager.NextPage(context.Background())
+			if err != nil {
+				return nil, fmt.Errorf("query page error: %v", err)
+			}
+
+			// Store items directly as json.RawMessage
+			for _, item := range queryResponse.Items {
+				response.QueryResults = append(response.QueryResults, json.RawMessage(item))
+			}
+
+			response.QueryMetrics = append(response.QueryMetrics, *queryResponse.QueryMetrics)
+		}
+
+		// Set metrics information
+
+		// Marshal the entire response struct
+		jsonResult, err := json.Marshal(response)
+		if err != nil {
+			return nil, fmt.Errorf("json marshal error: %v", err)
+		}
+
+		return mcp.NewToolResultText(string(jsonResult)), nil
+	}
+}
+
+type ExecuteQueryResponse struct {
+	QueryResults []json.RawMessage `json:"results"`
+	QueryMetrics []string          `json:"metrics"`
 }
 
 func execute_query() mcp.Tool {

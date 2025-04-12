@@ -308,7 +308,7 @@ func CreateContainer(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.
 			ID: container,
 			PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
 				Paths: []string{partitionKeyPath},
-				Kind:  azcosmos.PartitionKeyKindHash,
+				//Kind:  azcosmos.PartitionKeyKindHash,
 			},
 		}
 
