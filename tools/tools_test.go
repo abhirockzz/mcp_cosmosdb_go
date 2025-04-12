@@ -733,6 +733,16 @@ func TestExecuteQuery(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "valid arguments - no partition key",
+			arguments: map[string]interface{}{
+				"account":   dummy_account_does_not_matter,
+				"database":  testOperationDBName,
+				"container": testOperationContainerName,
+				"query":     "SELECT * FROM c",
+			},
+			expectError: false,
+		},
+		{
 			name: "empty account name",
 			arguments: map[string]interface{}{
 				"account":   "",
