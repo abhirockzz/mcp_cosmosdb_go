@@ -44,7 +44,7 @@ func setupCosmosEmulator(ctx context.Context) (testcontainers.Container, error) 
 		ExposedPorts: []string{emulatorPort + ":8081"},
 		WaitingFor:   wait.ForListeningPort(nat.Port(emulatorPort)),
 		Env: map[string]string{
-			"AZURE_COSMOS_EMULATOR_PARTITION_COUNT": "1",
+			"AZURE_COSMOS_EMULATOR_PARTITION_COUNT": "5",
 		},
 	}
 

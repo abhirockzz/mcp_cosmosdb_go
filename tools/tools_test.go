@@ -39,7 +39,7 @@ func TestListDatabases(t *testing.T) {
 			expectedResult: testOperationDBName,
 		},
 		{
-			name: "empplty account name",
+			name: "empty account name",
 			arguments: map[string]interface{}{
 				"account": "",
 			},
@@ -282,29 +282,29 @@ func TestCreateContainer(t *testing.T) {
 	}{
 		// in emulator, the valid create scenarios fail with - Sorry, we are currently experiencing high demand in this region South Central US, and cannot fulfill your request at this time
 		// commenting out temporarily
-		// {
-		// 	name: "valid arguments",
-		// 	arguments: map[string]interface{}{
-		// 		"account":          dummy_account_does_not_matter,
-		// 		"database":         testOperationDBName,
-		// 		"container":        "testContainer_new_1",
-		// 		"partitionKeyPath": "/id",
-		// 	},
-		// 	expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_1", testOperationDBName),
-		// 	expectError:    false,
-		// },
-		// {
-		// 	name: "valid arguments with throughput",
-		// 	arguments: map[string]interface{}{
-		// 		"account":          dummy_account_does_not_matter,
-		// 		"database":         testOperationDBName,
-		// 		"container":        "testContainer_new_2",
-		// 		"partitionKeyPath": "/id",
-		// 		"throughput":       400,
-		// 	},
-		// 	expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_2", testOperationDBName),
-		// 	expectError:    false,
-		// },
+		{
+			name: "valid arguments",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         testOperationDBName,
+				"container":        "testContainer_new_1",
+				"partitionKeyPath": "/id",
+			},
+			expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_1", testOperationDBName),
+			expectError:    false,
+		},
+		{
+			name: "valid arguments with throughput",
+			arguments: map[string]interface{}{
+				"account":          dummy_account_does_not_matter,
+				"database":         testOperationDBName,
+				"container":        "testContainer_new_2",
+				"partitionKeyPath": "/id",
+				"throughput":       400,
+			},
+			expectedResult: fmt.Sprintf("Container '%s' created successfully in database '%s'", "testContainer_new_2", testOperationDBName),
+			expectError:    false,
+		},
 		{
 			name: "empty account name",
 			arguments: map[string]interface{}{
