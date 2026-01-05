@@ -2,71 +2,56 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func ListDatabases(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
-	//func ListDatabases() (mcp.Tool, server.ToolHandlerFunc) {
+func ListDatabases() *mcp.Tool {
 
-	return listDatabases(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return &mcp.Tool{
+		Name:        "list_databases",
+		Description: "List all databases in the specified Azure Cosmos DB account",
+	}
+}
 
-		account, ok := request.Params.Arguments["account"].(string)
-		if !ok || account == "" {
-			return nil, errors.New("cosmos db account name missing")
-		}
+type ListDatabasesToolInput struct {
+	Account string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+}
 
-		client, err := clientRetriever.Get(account)
-		//client, err := common.GetCosmosDBClient(account)
+type ListDatabasesToolResult struct {
+	Account   string   `json:"account"`
+	Databases []string `json:"databases" jsonschema:"list of databases in the account"`
+}
 
-		if err != nil {
-			fmt.Printf("Error creating Cosmos client: %v\n", err)
-			return nil, err
-		}
+func ListDatabasesToolHandler(ctx context.Context, request *mcp.CallToolRequest, input ListDatabasesToolInput) (*mcp.CallToolResult, ListDatabasesToolResult, error) {
 
-		databaseNames := []string{}
-
-		queryPager := client.NewQueryDatabasesPager("select * from dbs d", nil)
-
-		for queryPager.More() {
-			queryResponse, err := queryPager.NextPage(context.Background())
-			if err != nil {
-				var responseErr *azcore.ResponseError
-				errors.As(err, &responseErr)
-				return nil, err
-			}
-
-			for _, db := range queryResponse.Databases {
-				databaseNames = append(databaseNames, db.ID)
-			}
-		}
-
-		jsonResult, err := json.Marshal(ListDatabasesResponse{Databases: databaseNames})
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling result to JSON: %v", err)
-		}
-
-		return mcp.NewToolResultText(string(jsonResult)), nil
+	if input.Account == "" {
+		return nil, ListDatabasesToolResult{}, errors.New("cosmos db account name missing")
 	}
 
-}
+	databaseNames := []string{}
 
-type ListDatabasesResponse struct {
-	Databases []string `json:"databases"`
-}
+	client, err := GetCosmosClientFunc(input.Account)
+	if err != nil {
+		return nil, ListDatabasesToolResult{}, err
+	}
 
-func listDatabases() mcp.Tool {
+	queryPager := client.NewQueryDatabasesPager("select * from dbs d", nil)
 
-	return mcp.NewTool(LIST_DATABASES_TOOL_NAME,
-		mcp.WithString("account",
-			mcp.Required(),
-			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),
-		),
-		mcp.WithDescription("List all databases in a Cosmos DB account"),
-	)
+	for queryPager.More() {
+		queryResponse, err := queryPager.NextPage(context.Background())
+		if err != nil {
+			var responseErr *azcore.ResponseError
+			errors.As(err, &responseErr)
+			return nil, ListDatabasesToolResult{}, err
+		}
+
+		for _, db := range queryResponse.Databases {
+			databaseNames = append(databaseNames, db.ID)
+		}
+	}
+
+	return nil, ListDatabasesToolResult{Account: input.Account, Databases: databaseNames}, nil
 }

@@ -8,354 +8,343 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func ListContainers(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
+func ListContainers() *mcp.Tool {
 
-	return listContainers(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-
-		account, ok := request.Params.Arguments["account"].(string)
-		if !ok || account == "" {
-			return nil, errors.New("cosmos db account name missing")
-		}
-		database, ok := request.Params.Arguments["database"].(string)
-		if !ok || database == "" {
-			return nil, errors.New("database name missing")
-		}
-
-		client, err := clientRetriever.Get(account)
-
-		if err != nil {
-			fmt.Printf("Error creating Cosmos client: %v\n", err)
-			return nil, err
-		}
-
-		databaseClient, err := client.NewDatabase(database)
-		if err != nil {
-			return nil, fmt.Errorf("error creating database client: %v", err)
-		}
-		// databaseClient, err := common.GetDatabaseClient(account, database)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error creating Cosmos client: %v", err)
-		// }
-
-		containerPager := databaseClient.NewQueryContainersPager("select * from c", nil)
-
-		containerNames := []string{}
-
-		for containerPager.More() {
-			containerResponse, err := containerPager.NextPage(context.Background())
-			if err != nil {
-				var responseErr *azcore.ResponseError
-				errors.As(err, &responseErr)
-				return nil, err
-			}
-
-			for _, container := range containerResponse.Containers {
-				containerNames = append(containerNames, container.ID)
-			}
-		}
-
-		// result := map[string]interface{}{
-		// 	"containers": containerNames,
-		// }
-
-		jsonResult, err := json.Marshal(ListContainersResponse{
-			Account:    account,
-			Database:   database,
-			Containers: containerNames,
-		})
-
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling result to JSON: %v", err)
-		}
-
-		return mcp.NewToolResultText(string(jsonResult)), nil
+	return &mcp.Tool{
+		Name:        "list_containers",
+		Description: "List all containers in the specified Azure Cosmos DB database",
 	}
 }
 
-type ListContainersResponse struct {
-	Account    string
-	Database   string
+type ListContainersToolInput struct {
+	Account  string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	Database string `json:"database" jsonschema:"Azure Cosmos DB database name"`
+}
+
+type ListContainersToolResult struct {
+	Account    string   `json:"account"`
+	Database   string   `json:"database"`
 	Containers []string `json:"containers"`
 }
 
-func listContainers() mcp.Tool {
+func ListContainersToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ListContainersToolInput) (*mcp.CallToolResult, ListContainersToolResult, error) {
 
-	return mcp.NewTool("list_containers",
-		mcp.WithString("account",
-			mcp.Required(),
-			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),
-		),
-		mcp.WithString("database",
-			mcp.Required(),
-			mcp.Description("Name of the database to list containers from"),
-		),
-		mcp.WithDescription("List all containers in a specific database"),
-	)
-}
+	accountName := input.Account
 
-func ReadContainerMetadata(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
-	return readContainerMetadata(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if accountName == "" {
+		return nil, ListContainersToolResult{}, errors.New("cosmos db account name missing")
+	}
 
-		account, ok := request.Params.Arguments["account"].(string)
-		if !ok || account == "" {
-			return nil, errors.New("cosmos db account name missing")
-		}
-		database, ok := request.Params.Arguments["database"].(string)
-		if !ok || database == "" {
-			return nil, errors.New("database name missing")
-		}
-		container, ok := request.Params.Arguments["container"].(string)
-		if !ok || container == "" {
-			return nil, errors.New("container name missing")
-		}
+	database := input.Database
 
-		client, err := clientRetriever.Get(account)
+	if database == "" {
+		return nil, ListContainersToolResult{}, errors.New("cosmos db database name missing")
+	}
 
-		if err != nil {
-			fmt.Printf("Error creating Cosmos client: %v\n", err)
-			return nil, err
-		}
+	client, err := GetCosmosClientFunc(accountName)
+	if err != nil {
+		return nil, ListContainersToolResult{}, err
+	}
 
-		databaseClient, err := client.NewDatabase(database)
-		if err != nil {
-			return nil, fmt.Errorf("error creating database client: %v", err)
-		}
+	databaseClient, err := client.NewDatabase(database)
+	if err != nil {
+		return nil, ListContainersToolResult{}, fmt.Errorf("error creating database client: %v", err)
+	}
 
-		containerClient, err := databaseClient.NewContainer(container)
-		if err != nil {
-			return nil, fmt.Errorf("error creating container client: %v", err)
-		}
+	containerPager := databaseClient.NewQueryContainersPager("select * from c", nil)
 
-		// containerClient, err := common.GetContainerClient(account, database, container)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error creating container client: %v", err)
-		// }
+	containerNames := []string{}
 
-		response, err := containerClient.Read(context.Background(), nil)
+	for containerPager.More() {
+		containerResponse, err := containerPager.NextPage(ctx)
 		if err != nil {
 			var responseErr *azcore.ResponseError
 			errors.As(err, &responseErr)
-			return nil, err
+			return nil, ListContainersToolResult{}, err
 		}
 
-		metadata := map[string]interface{}{
-			"container_id":               response.ContainerProperties.ID,
-			"default_ttl":                response.ContainerProperties.DefaultTimeToLive,
-			"indexing_policy":            response.ContainerProperties.IndexingPolicy,
-			"partition_key_definition":   response.ContainerProperties.PartitionKeyDefinition,
-			"conflict_resolution_policy": response.ContainerProperties.ConflictResolutionPolicy,
+		for _, container := range containerResponse.Containers {
+			containerNames = append(containerNames, container.ID)
 		}
+	}
 
-		jsonResult, err := json.Marshal(metadata)
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling result to JSON: %v", err)
-		}
+	return nil, ListContainersToolResult{
+		Account:    accountName,
+		Database:   database,
+		Containers: containerNames,
+	}, nil
 
-		return mcp.NewToolResultText(string(jsonResult)), nil
+}
+
+func ReadContainerMetadata() *mcp.Tool {
+
+	return &mcp.Tool{
+		Name:        "read_container_metadata",
+		Description: "Read metadata of the specified container in Azure Cosmos DB",
 	}
 }
 
-func readContainerMetadata() mcp.Tool {
-
-	return mcp.NewTool(READ_CONTAINER_METADATA_TOOL_NAME,
-		mcp.WithString("account",
-			mcp.Required(),
-			mcp.Description("Name of the Cosmos DB account"),
-		),
-		mcp.WithString("database",
-			mcp.Required(),
-			mcp.Description("Name of the database to list containers from"),
-		),
-		mcp.WithString("container",
-			mcp.Required(),
-			mcp.Description("Name of the container to query"),
-		),
-		mcp.WithDescription("Retrieve metadata or configuration of a specific container in a Cosmos DB database. Not to be used for executing queries or reading data from the container."),
-	)
+type ReadContainerMetadataToolInput struct {
+	Account   string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	Database  string `json:"database" jsonschema:"Azure Cosmos DB database name"`
+	Container string `json:"container" jsonschema:"Azure Cosmos DB container name"`
 }
 
-func CreateContainer(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
-	return createContainer(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		account, ok := request.Params.Arguments["account"].(string)
-		if !ok || account == "" {
-			return nil, errors.New("cosmos db account name missing")
-		}
-		database, ok := request.Params.Arguments["database"].(string)
-		if !ok || database == "" {
-			return nil, errors.New("database name missing")
-		}
-		container, ok := request.Params.Arguments["container"].(string)
-		if !ok || container == "" {
-			return nil, errors.New("container name missing")
-		}
-		partitionKeyPath, ok := request.Params.Arguments["partitionKeyPath"].(string)
-		if !ok || partitionKeyPath == "" {
-			return nil, errors.New("partition key path missing")
-		}
-		throughput, hasThroughput := request.Params.Arguments["throughput"].(int)
+type ReadContainerMetadataToolResult struct {
+	ContainerID              string `json:"container_id"`
+	DefaultTTL               *int32 `json:"default_ttl,omitempty"`
+	IndexingPolicy           any    `json:"indexing_policy"`
+	PartitionKeyDefinition   any    `json:"partition_key_definition"`
+	ConflictResolutionPolicy any    `json:"conflict_resolution_policy"`
+}
 
-		client, err := clientRetriever.Get(account)
+// func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ReadContainerMetadataToolInput) (*mcp.CallToolResult, ReadContainerMetadataToolResult, error) {
+func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ReadContainerMetadataToolInput) (*mcp.CallToolResult, any, error) {
 
-		if err != nil {
-			fmt.Printf("Error creating Cosmos client: %v\n", err)
-			return nil, err
-		}
+	accountName := input.Account
 
-		databaseClient, err := client.NewDatabase(database)
-		if err != nil {
-			return nil, fmt.Errorf("error creating database client: %v", err)
-		}
-		// databaseClient, err := common.GetDatabaseClient(account, database)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error creating database client: %v", err)
-		// }
+	if accountName == "" {
+		return nil, ReadContainerMetadataToolResult{}, errors.New("cosmos db account name missing")
+	}
 
-		properties := azcosmos.ContainerProperties{
-			ID: container,
-			PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
-				Paths: []string{partitionKeyPath},
-				//Kind:  azcosmos.PartitionKeyKindHash,
-			},
-		}
+	database := input.Database
 
-		if hasThroughput {
-			throughputProps := azcosmos.NewManualThroughputProperties(int32(throughput))
-			_, err = databaseClient.CreateContainer(ctx, properties, &azcosmos.CreateContainerOptions{
-				ThroughputProperties: &throughputProps,
-			})
-		} else {
-			_, err = databaseClient.CreateContainer(ctx, properties, nil)
-		}
+	if database == "" {
+		return nil, ReadContainerMetadataToolResult{}, errors.New("cosmos db database name missing")
+	}
 
-		if err != nil {
-			return nil, fmt.Errorf("error creating container: %v", err)
-		}
+	container := input.Container
 
-		return mcp.NewToolResultText(fmt.Sprintf("Container '%s' created successfully in database '%s'", container, database)), nil
+	if container == "" {
+		return nil, ReadContainerMetadataToolResult{}, errors.New("container name missing")
+	}
+
+	client, err := GetCosmosClientFunc(accountName)
+	if err != nil {
+		return nil, ReadContainerMetadataToolResult{}, err
+	}
+
+	databaseClient, err := client.NewDatabase(database)
+	if err != nil {
+		return nil, ReadContainerMetadataToolResult{}, fmt.Errorf("error creating database client: %v", err)
+	}
+
+	containerClient, err := databaseClient.NewContainer(container)
+	if err != nil {
+		return nil, ReadContainerMetadataToolResult{}, fmt.Errorf("error creating container client: %v", err)
+	}
+
+	response, err := containerClient.Read(ctx, nil)
+	if err != nil {
+		var responseErr *azcore.ResponseError
+		errors.As(err, &responseErr)
+		return nil, ReadContainerMetadataToolResult{}, err
+	}
+
+	metadata := map[string]any{
+		"container_id":               response.ContainerProperties.ID,
+		"default_ttl":                response.ContainerProperties.DefaultTimeToLive,
+		"indexing_policy":            response.ContainerProperties.IndexingPolicy,
+		"partition_key_definition":   response.ContainerProperties.PartitionKeyDefinition,
+		"conflict_resolution_policy": response.ContainerProperties.ConflictResolutionPolicy,
+	}
+
+	jsonResult, err := json.Marshal(metadata)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error marshalling result to JSON: %v", err)
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: string(jsonResult)},
+		},
+	}, nil, nil
+
+	// return nil, ReadContainerMetadataToolResult{
+	// 	ContainerID:              response.ContainerProperties.ID,
+	// 	DefaultTTL:               response.ContainerProperties.DefaultTimeToLive,
+	// 	IndexingPolicy:           response.ContainerProperties.IndexingPolicy,
+	// 	PartitionKeyDefinition:   response.ContainerProperties.PartitionKeyDefinition,
+	// 	ConflictResolutionPolicy: response.ContainerProperties.ConflictResolutionPolicy,
+	// }, nil
+
+}
+
+func CreateContainer() *mcp.Tool {
+	return &mcp.Tool{
+		Name:        "create_container",
+		Description: "Create a new container in the specified Azure Cosmos DB database",
 	}
 }
 
-func createContainer() mcp.Tool {
-	return mcp.NewTool(CREATE_CONTAINER_TOOL_NAME,
-		mcp.WithString("account",
-			mcp.Required(),
-			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),
-		),
-		mcp.WithString("database",
-			mcp.Required(),
-			mcp.Description("Name of the database to create the container in"),
-		),
-		mcp.WithString("container",
-			mcp.Required(),
-			mcp.Description("Name of the container to create"),
-		),
-		mcp.WithString("partitionKeyPath",
-			mcp.Required(),
-			mcp.Description("Partition key path for the container, e.g., '/id'"),
-		),
-		mcp.WithNumber("throughput",
-			mcp.Description("Provisioned throughput for the container (optional)"),
-		),
-		mcp.WithDescription("Create a new container in a specified database"),
-	)
+type CreateContainerToolInput struct {
+	Account          string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	Database         string `json:"database" jsonschema:"Azure Cosmos DB database name"`
+	Container        string `json:"container" jsonschema:"Name of the container to create"`
+	PartitionKeyPath string `json:"partitionKeyPath" jsonschema:"Partition key path for the container, e.g., '/id'"`
+	Throughput       *int32 `json:"throughput,omitempty" jsonschema:"Provisioned throughput for the container (optional)"`
 }
 
-func AddItemToContainer(clientRetriever CosmosDBClientRetriever) (mcp.Tool, server.ToolHandlerFunc) {
-	return addItemToContainer(), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+type CreateContainerToolResult struct {
+	Account   string `json:"account"`
+	Database  string `json:"database"`
+	Container string `json:"container"`
+	Message   string `json:"message"`
+}
 
-		account, ok := request.Params.Arguments["account"].(string)
-		if !ok || account == "" {
-			return nil, errors.New("cosmos db account name missing")
-		}
-		database, ok := request.Params.Arguments["database"].(string)
-		if !ok || database == "" {
-			return nil, errors.New("database name missing")
-		}
-		container, ok := request.Params.Arguments["container"].(string)
-		if !ok || container == "" {
-			return nil, errors.New("container name missing")
-		}
-		partitionKeyValue, ok := request.Params.Arguments["partitionKey"].(string)
-		if !ok || partitionKeyValue == "" {
-			return nil, errors.New("value for partition key missing")
-		}
-		itemJSON, ok := request.Params.Arguments["item"].(string)
-		if !ok || itemJSON == "" {
-			return nil, errors.New("item JSON missing")
-		}
+func CreateContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input CreateContainerToolInput) (*mcp.CallToolResult, CreateContainerToolResult, error) {
+	accountName := input.Account
 
-		// var item map[string]interface{}
-		// if err := json.Unmarshal([]byte(itemJSON), &item); err != nil {
-		// 	return nil, fmt.Errorf("error unmarshalling item JSON: %v", err)
-		// }
-
-		client, err := clientRetriever.Get(account)
-
-		if err != nil {
-			fmt.Printf("Error creating Cosmos client: %v\n", err)
-			return nil, err
-		}
-
-		databaseClient, err := client.NewDatabase(database)
-		if err != nil {
-			return nil, fmt.Errorf("error creating database client: %v", err)
-		}
-
-		containerClient, err := databaseClient.NewContainer(container)
-		if err != nil {
-			return nil, fmt.Errorf("error creating container client: %v", err)
-		}
-
-		partitionKey := azcosmos.NewPartitionKeyString(partitionKeyValue)
-		// itemBytes, err := json.Marshal(item)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error marshalling item to JSON: %v", err)
-		// }
-
-		_, err = containerClient.CreateItem(ctx, partitionKey, []byte(itemJSON), nil)
-		if err != nil {
-			return nil, fmt.Errorf("error adding item to container: %v", err)
-		}
-
-		// var response map[string]interface{}
-		// err = json.Unmarshal(createItemResponse.Value, &response)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error un-marshalling result: %v", err)
-		// }
-
-		return mcp.NewToolResultText(fmt.Sprintf("Item added successfully to container '%s' in database '%s'", container, database)), nil
-
-		// return mcp.NewToolResultText(string(createItemResponse.Value)), nil
+	if accountName == "" {
+		return nil, CreateContainerToolResult{}, errors.New("cosmos db account name missing")
 	}
 
+	database := input.Database
+
+	if database == "" {
+		return nil, CreateContainerToolResult{}, errors.New("cosmos db database name missing")
+	}
+
+	container := input.Container
+
+	if container == "" {
+		return nil, CreateContainerToolResult{}, errors.New("container name missing")
+	}
+
+	partitionKeyPath := input.PartitionKeyPath
+
+	if partitionKeyPath == "" {
+		return nil, CreateContainerToolResult{}, errors.New("partition key path missing")
+	}
+
+	client, err := GetCosmosClientFunc(accountName)
+	if err != nil {
+		return nil, CreateContainerToolResult{}, err
+	}
+
+	databaseClient, err := client.NewDatabase(database)
+	if err != nil {
+		return nil, CreateContainerToolResult{}, fmt.Errorf("error creating database client: %v", err)
+	}
+
+	properties := azcosmos.ContainerProperties{
+		ID: container,
+		PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
+			Paths: []string{partitionKeyPath},
+		},
+	}
+
+	if input.Throughput != nil {
+		throughputProps := azcosmos.NewManualThroughputProperties(*input.Throughput)
+		_, err = databaseClient.CreateContainer(ctx, properties, &azcosmos.CreateContainerOptions{
+			ThroughputProperties: &throughputProps,
+		})
+	} else {
+		_, err = databaseClient.CreateContainer(ctx, properties, nil)
+	}
+
+	if err != nil {
+		var responseErr *azcore.ResponseError
+		errors.As(err, &responseErr)
+		return nil, CreateContainerToolResult{}, fmt.Errorf("error creating container: %v", err)
+	}
+
+	message := fmt.Sprintf("Container '%s' created successfully in database '%s'", container, database)
+
+	return nil, CreateContainerToolResult{
+		Account:   accountName,
+		Database:  database,
+		Container: container,
+		Message:   message,
+	}, nil
 }
 
-func addItemToContainer() mcp.Tool {
-	return mcp.NewTool(ADD_CONTAINER_ITEM_TOOL_NAME,
-		mcp.WithString("account",
-			mcp.Required(),
-			mcp.Description(ACCOUNT_PARAMETER_DESCRIPTION),
-		),
-		mcp.WithString("database",
-			mcp.Required(),
-			mcp.Description("Name of the database to add the item to"),
-		),
-		mcp.WithString("container",
-			mcp.Required(),
-			mcp.Description("Name of the container to add the item to"),
-		),
-		mcp.WithString("partitionKey",
-			mcp.Required(),
-			mcp.Description("Partition key for the item to add"),
-		),
-		mcp.WithString("item",
-			mcp.Required(),
-			mcp.Description("The JSON representation of the item to add. id field is mandatory"),
-		),
-		mcp.WithDescription("Add a new item to a specified container in a Cosmos DB database"),
-	)
+func AddItemToContainer() *mcp.Tool {
+	return &mcp.Tool{
+		Name:        "add_item_to_container",
+		Description: "Add an item to the specified container in Azure Cosmos DB",
+	}
+}
+
+type AddItemToContainerToolInput struct {
+	Account      string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	Database     string `json:"database" jsonschema:"Azure Cosmos DB database name"`
+	Container    string `json:"container" jsonschema:"Name of the container to add the item to"`
+	PartitionKey string `json:"partitionKey" jsonschema:"Partition key value for the item"`
+	Item         string `json:"item" jsonschema:"The JSON representation of the item to add. id field is mandatory"`
+}
+
+type AddItemToContainerToolResult struct {
+	Account   string `json:"account"`
+	Database  string `json:"database"`
+	Container string `json:"container"`
+	Message   string `json:"message"`
+}
+
+func AddItemToContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input AddItemToContainerToolInput) (*mcp.CallToolResult, AddItemToContainerToolResult, error) {
+	accountName := input.Account
+
+	if accountName == "" {
+		return nil, AddItemToContainerToolResult{}, errors.New("cosmos db account name missing")
+	}
+
+	database := input.Database
+
+	if database == "" {
+		return nil, AddItemToContainerToolResult{}, errors.New("cosmos db database name missing")
+	}
+
+	container := input.Container
+
+	if container == "" {
+		return nil, AddItemToContainerToolResult{}, errors.New("container name missing")
+	}
+
+	partitionKeyValue := input.PartitionKey
+
+	if partitionKeyValue == "" {
+		return nil, AddItemToContainerToolResult{}, errors.New("value for partition key missing")
+	}
+
+	itemJSON := input.Item
+
+	if itemJSON == "" {
+		return nil, AddItemToContainerToolResult{}, errors.New("item JSON missing")
+	}
+
+	client, err := GetCosmosClientFunc(accountName)
+	if err != nil {
+		return nil, AddItemToContainerToolResult{}, err
+	}
+
+	databaseClient, err := client.NewDatabase(database)
+	if err != nil {
+		return nil, AddItemToContainerToolResult{}, fmt.Errorf("error creating database client: %v", err)
+	}
+
+	containerClient, err := databaseClient.NewContainer(container)
+	if err != nil {
+		return nil, AddItemToContainerToolResult{}, fmt.Errorf("error creating container client: %v", err)
+	}
+
+	partitionKey := azcosmos.NewPartitionKeyString(partitionKeyValue)
+
+	_, err = containerClient.CreateItem(ctx, partitionKey, []byte(itemJSON), nil)
+	if err != nil {
+		var responseErr *azcore.ResponseError
+		errors.As(err, &responseErr)
+		return nil, AddItemToContainerToolResult{}, fmt.Errorf("error adding item to container: %v", err)
+	}
+
+	message := fmt.Sprintf("Item added successfully to container '%s' in database '%s'", container, database)
+
+	return nil, AddItemToContainerToolResult{
+		Account:   accountName,
+		Database:  database,
+		Container: container,
+		Message:   message,
+	}, nil
 }

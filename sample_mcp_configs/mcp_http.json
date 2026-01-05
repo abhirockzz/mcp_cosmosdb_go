@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "mcp_azure_cosmosdb_go_http": {
+      "type": "http",
+      "url": "http://localhost:9090"
+    }
+  }
+}
