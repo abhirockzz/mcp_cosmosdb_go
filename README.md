@@ -12,7 +12,7 @@ It exposes the following tools for interacting with Azure Cosmos DB:
 - **Read Item**: Read a specific item from a container using its ID and partition key.
 - **Execute Query**: Execute a SQL query on a Cosmos DB container with optional partition key scoping.
 
-This project is not intended to replace the [Azure MCP Server](https://github.com/azure/azure-mcp) or [Azure Cosmos DB MCP Toolkit](https://github.com/AzureCosmosDB/MCPToolKit). Rather, it serves as an experimental **learning tool** that demonstrates how to combine the Azure Go SDK and MCP Go SDK Cosmos DB to build AI tooling for Azure Cosmos DB.
+⚠️ This project is not intended to replace the [Azure MCP Server](https://github.com/azure/azure-mcp) or [Azure Cosmos DB MCP Toolkit](https://github.com/AzureCosmosDB/MCPToolKit). Rather, it serves as an experimental **learning tool** that demonstrates how to combine the Azure Go SDK and MCP Go SDK Cosmos DB to build AI tooling for Azure Cosmos DB.
 
 ▶️ Here is a demo using [Agent Mode in Visual Studio Code](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode) (opens video):
 
@@ -35,7 +35,12 @@ go build -o mcp_azure_cosmosdb_go main.go
 
 **Note**: The MCP server uses the [DefaultAzureCredential](https://learn.microsoft.com/en-us/azure/developer/go/sdk/authentication/credential-chains#defaultazurecredential-overview) implementation from the Azure SDK for Go to authenticate with Azure Cosmos DB. This means that you can authenticate using various methods, including environment variables, managed identity, or Azure CLI login, among others.
 
-### 💻 Local
+You can run the MCP server in two modes:
+
+- Locally on your machine as an HTTP server, or stdio process
+- Deployed to a remote endpoint (like Azure App Service, Azure Container Apps, etc.) as an HTTP(s) server
+
+### 💻 Local mode
 
 Thanks to Streamable HTTP support, you can easily run this MCP server as an HTTP server locally on your machine.
 
@@ -54,9 +59,7 @@ export COSMOSDB_MCP_SERVER_MODE=http
 
 This will start the server on port `9090` by default. You can change the port by setting the `PORT` environment variable.
 
-Configure the server:
-
-This will differ based on the MCP client/tool you use. For VS Code you can [follow these instructions](https://code.visualstudio.com/docs/copilot/chat/mcp-servers#_add-an-mcp-server) on how to configure this server using a `mcp.json` file.
+How you **configure** the MCP server will differ based on the MCP client/tool you use. For VS Code you can [follow these instructions](https://code.visualstudio.com/docs/copilot/chat/mcp-servers#_add-an-mcp-server) on how to configure this server using a `mcp.json` file.
 
 Here is an example of the `mcp.json` configuration for the HTTP server:
 
@@ -89,6 +92,8 @@ Here is an example of the `mcp.json` configuration for the `stdio` mode:
   //other MCP servers...
 }
 ```
+
+Once you have configured the MCP server in your tool, you can start using it to interact with Azure Cosmos DB (just like in the demo shown above).
 
 > For other tools like Claude Code, Claude Desktop, etc., refer to their respective documentation on how to configure an MCP HTTP server.
 
