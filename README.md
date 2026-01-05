@@ -14,9 +14,11 @@ It exposes the following tools for interacting with Azure Cosmos DB:
 
 This project is not intended to replace the [Azure MCP Server](https://github.com/azure/azure-mcp) or [Azure Cosmos DB MCP Toolkit](https://github.com/AzureCosmosDB/MCPToolKit). Rather, it serves as an experimental **learning tool** that demonstrates how to combine the Azure Go SDK and MCP Go SDK Cosmos DB to build AI tooling for Azure Cosmos DB.
 
-Here is a demo (recommend watching at 2x speed 😉) using [Agent Mode in Visual Studio Code](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode):
+Here is a demo using [Agent Mode in Visual Studio Code](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode):
 
-[![MCP server demo](images/demo.png)](https://www.youtube.com/watch?v=CsM-mspWJeM)
+<a href="https://abhirockzz.github.io/videos/mcp_server_demo.mp4" target="_blank" rel="noopener noreferrer">
+  <img src="images/mcp_demo.png" alt="MCP server demo" />
+</a>
 
 ## How to run
 
