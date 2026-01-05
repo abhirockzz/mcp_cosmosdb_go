@@ -18,7 +18,7 @@ This project is not intended to replace the [Azure MCP Server](https://github.co
 
 [![MCP server demo](images/mcp_demo.png)](https://abhirockzz.github.io/videos/mcp_server_demo.mp4)
 
-## How to run
+## 🚀 How to run
 
 > Large Language Models (LLMs) are non-deterministic by nature and can make mistakes. **Always validate** the results and queries before making any decisions based on them.
 
@@ -35,7 +35,7 @@ go build -o mcp_azure_cosmosdb_go main.go
 
 **Note**: The MCP server uses the [DefaultAzureCredential](https://learn.microsoft.com/en-us/azure/developer/go/sdk/authentication/credential-chains#defaultazurecredential-overview) implementation from the Azure SDK for Go to authenticate with Azure Cosmos DB. This means that you can authenticate using various methods, including environment variables, managed identity, or Azure CLI login, among others.
 
-### Local
+### 💻 Local
 
 Thanks to Streamable HTTP support, you can easily run this MCP server as an HTTP server locally on your machine.
 
@@ -43,7 +43,7 @@ Login using Azure CLI ([az login](https://learn.microsoft.com/en-us/cli/azure/au
 
 The user principal (identity) you are logged in with should have permissions ([control](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/security/how-to-grant-control-plane-role-based-access?tabs=built-in-definition%2Ccsharp&pivots=azure-interface-cli) and [data plane](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/security/how-to-grant-data-plane-role-based-access?tabs=built-in-definition%2Ccsharp&pivots=azure-interface-cli)) to execute CRUD operations on database, container, and items.
 
-**HTTP server**
+**🌐 HTTP server**
 
 Start the server:
 
@@ -74,7 +74,7 @@ Here is an example of the `mcp.json` configuration for the HTTP server:
 
 > Change the port if you have configured a different one.
 
-**Stdio server**
+**🖥️ Stdio server**
 
 Here is an example of the `mcp.json` configuration for the `stdio` mode:
 
@@ -92,13 +92,13 @@ Here is an example of the `mcp.json` configuration for the `stdio` mode:
 
 > For other tools like Claude Code, Claude Desktop, etc., refer to their respective documentation on how to configure an MCP HTTP server.
 
-### Remote endpoint
+### ☁️ Remote endpoint
 
 You can also deploy this MCP server to any cloud service (like Azure App Service, Azure Container Apps, etc.) and expose it as an HTTP(s) endpoint. The Azure service should support Managed Identity, and the MCP server will automatically pick up the credentials using the [DefaultAzureCredential](https://learn.microsoft.com/en-us/azure/developer/go/sdk/authentication/credential-chains#defaultazurecredential-overview) implementation.
 
 This execution mode is **not recommended** (for now). Use this only for testing or dev purposes. This is because, although MCP server can access Cosmos DB securely using Managed Identity, but it **does not** implement client-side authentication and authorization yet. Anyone who can access the endpoint can execute operations on your Cosmos DB account.
 
-## Local dev and testing
+## 🧪 Local dev and testing
 
 Use [MCP inspector](https://modelcontextprotocol.io/docs/tools/inspector) - `make mcp_inspector`
 
