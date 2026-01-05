@@ -184,7 +184,7 @@ type CreateContainerToolInput struct {
 	Account          string `json:"account" jsonschema:"Azure Cosmos DB account name"`
 	Database         string `json:"database" jsonschema:"Azure Cosmos DB database name"`
 	Container        string `json:"container" jsonschema:"Name of the container to create"`
-	PartitionKeyPath string `json:"partitionKeyPath" jsonschema:"Partition key path for the container, e.g., '/id'"`
+	PartitionKeyPath string `json:"partitionKeyPath" jsonschema:"Partition key path for the container, example /id, /tentant, /category etc."`
 	Throughput       *int32 `json:"throughput,omitempty" jsonschema:"Provisioned throughput for the container (optional)"`
 }
 
