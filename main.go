@@ -49,6 +49,7 @@ func newServer() *mcp.Server {
 	}, nil)
 
 	mcp.AddTool(server, tools.ListDatabases(), tools.ListDatabasesToolHandler)
+	mcp.AddTool(server, tools.CreateDatabase(), tools.CreateDatabaseToolHandler)
 	mcp.AddTool(server, tools.ListContainers(), tools.ListContainersToolHandler)
 	mcp.AddTool(server, tools.ReadContainerMetadata(), tools.ReadContainerMetadataToolHandler)
 	mcp.AddTool(server, tools.CreateContainer(), tools.CreateContainerToolHandler)

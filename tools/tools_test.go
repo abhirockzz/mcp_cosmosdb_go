@@ -100,13 +100,66 @@ func TestListDatabases(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-
-			require.NoError(t, err)
-			assert.Equal(t, 1, len(response.Databases))
-			assert.Equal(t, test.expectedResult, response.Databases[0])
+			assert.GreaterOrEqual(t, len(response.Databases), 1, "Should have at least one database")
+			assert.Contains(t, response.Databases, test.expectedResult, "Should contain the test database")
 		})
 	}
 
+}
+
+func TestCreateDatabase(t *testing.T) {
+
+	tests := []struct {
+		name           string
+		input          CreateDatabaseToolInput
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name: "valid arguments",
+			input: CreateDatabaseToolInput{
+				Account:  "dummy_account_does_not_matter",
+				Database: "newTestDatabase1",
+			},
+			expectError: false,
+		},
+		{
+			name: "empty account name",
+			input: CreateDatabaseToolInput{
+				Account:  "",
+				Database: "newTestDatabase",
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db account name missing",
+		},
+		{
+			name: "empty database name",
+			input: CreateDatabaseToolInput{
+				Account:  "dummy_account_does_not_matter",
+				Database: "",
+			},
+			expectError:    true,
+			expectedErrMsg: "database name missing",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			_, response, err := CreateDatabaseToolHandler(context.Background(), nil, test.input)
+
+			if test.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, "dummy_account_does_not_matter", response.Account)
+			assert.Equal(t, test.input.Database, response.Database)
+			assert.Contains(t, response.Message, "created successfully")
+		})
+	}
 }
 
 func TestListContainers(t *testing.T) {

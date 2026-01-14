@@ -3,8 +3,10 @@ package tools
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -54,4 +56,50 @@ func ListDatabasesToolHandler(ctx context.Context, request *mcp.CallToolRequest,
 	}
 
 	return nil, ListDatabasesToolResult{Account: input.Account, Databases: databaseNames}, nil
+}
+
+func CreateDatabase() *mcp.Tool {
+	return &mcp.Tool{
+		Name:        "create_database",
+		Description: "Create a new database in the specified Azure Cosmos DB account",
+	}
+}
+
+type CreateDatabaseToolInput struct {
+	Account  string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	Database string `json:"database" jsonschema:"Name of the database to create"`
+}
+
+type CreateDatabaseToolResult struct {
+	Account  string `json:"account"`
+	Database string `json:"database"`
+	Message  string `json:"message"`
+}
+
+func CreateDatabaseToolHandler(ctx context.Context, request *mcp.CallToolRequest, input CreateDatabaseToolInput) (*mcp.CallToolResult, CreateDatabaseToolResult, error) {
+
+	if input.Account == "" {
+		return nil, CreateDatabaseToolResult{}, errors.New("cosmos db account name missing")
+	}
+
+	if input.Database == "" {
+		return nil, CreateDatabaseToolResult{}, errors.New("database name missing")
+	}
+
+	client, err := GetCosmosClientFunc(input.Account)
+	if err != nil {
+		return nil, CreateDatabaseToolResult{}, err
+	}
+
+	databaseProps := azcosmos.DatabaseProperties{ID: input.Database}
+	_, err = client.CreateDatabase(ctx, databaseProps, nil)
+	if err != nil {
+		return nil, CreateDatabaseToolResult{}, fmt.Errorf("error creating database: %w", err)
+	}
+
+	return nil, CreateDatabaseToolResult{
+		Account:  input.Account,
+		Database: input.Database,
+		Message:  fmt.Sprintf("Database '%s' created successfully", input.Database),
+	}, nil
 }

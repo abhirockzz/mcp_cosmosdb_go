@@ -71,6 +71,70 @@ func TestMCPIntegration_ListDatabases(t *testing.T) {
 	assert.Contains(t, response.Databases, testOperationDBName, "Should contain the test database")
 }
 
+// TestMCPIntegration_CreateDatabase tests the create_database tool through the full MCP stack
+func TestMCPIntegration_CreateDatabase(t *testing.T) {
+	ctx := context.Background()
+
+	// Create MCP server and register tools
+	server := mcp.NewServer(&mcp.Implementation{
+		Name:    "test-cosmosdb-server",
+		Version: "0.0.1",
+	}, nil)
+
+	mcp.AddTool(server, CreateDatabase(), CreateDatabaseToolHandler)
+
+	// Create in-memory transports for testing
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	// Connect server
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	require.NoError(t, err)
+	defer serverSession.Close()
+
+	// Connect client
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "test-client",
+		Version: "0.0.1",
+	}, nil)
+
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
+	require.NoError(t, err)
+	defer clientSession.Close()
+
+	// Call the create_database tool via MCP protocol
+	databaseName := "mcp_integration_test_db"
+	result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "create_database",
+		Arguments: map[string]any{
+			"account":  "dummy_account_does_not_matter",
+			"database": databaseName,
+		},
+	})
+
+	// Verify the call succeeded
+	require.NoError(t, err, "CallTool should not return an error")
+	require.NotNil(t, result, "Result should not be nil")
+	require.False(t, result.IsError, "Result should not be an error")
+	require.NotEmpty(t, result.Content, "Result content should not be empty")
+
+	// Parse the response content
+	// The content should be a TextContent with JSON
+	require.Len(t, result.Content, 1, "Should have exactly one content item")
+
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	require.True(t, ok, "Content should be TextContent")
+
+	// Parse the JSON response
+	var response CreateDatabaseToolResult
+	err = json.Unmarshal([]byte(textContent.Text), &response)
+	require.NoError(t, err, "Response should be valid JSON")
+
+	// Verify the response contains expected data
+	assert.Equal(t, "dummy_account_does_not_matter", response.Account, "Account should match")
+	assert.Equal(t, databaseName, response.Database, "Database name should match")
+	assert.Contains(t, response.Message, "created successfully", "Message should indicate success")
+}
+
 // TestMCPIntegration_ListContainers tests the list_containers tool through the full MCP stack
 // to be investigted: in vNext emulator, this returns 400 error with message "id is required in the request body"
 // skipping for now
