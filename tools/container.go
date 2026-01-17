@@ -144,12 +144,61 @@ func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolReques
 		return nil, ReadContainerMetadataToolResult{}, err
 	}
 
+	// Build throughput info
+	var throughputInfo map[string]any
+	throughputResp, throughputErr := containerClient.ReadThroughput(ctx, nil)
+	if throughputErr != nil {
+		// Check the error type to distinguish between shared throughput and other errors
+		var responseErr *azcore.ResponseError
+		if errors.As(throughputErr, &responseErr) {
+			switch responseErr.StatusCode {
+			case 404:
+				// 404 means container has no dedicated throughput - uses database-level (shared)
+				throughputInfo = map[string]any{
+					"type":    "shared",
+					"message": "Throughput is provisioned at database level",
+				}
+			case 400:
+				// 400 typically means emulator limitation (offers endpoint not implemented)
+				throughputInfo = map[string]any{
+					"type":    "unknown",
+					"message": "Unable to read throughput (emulator limitation or unsupported operation)",
+				}
+			default:
+				// Other errors (e.g., 403 permission denied)
+				throughputInfo = map[string]any{
+					"type":    "error",
+					"message": fmt.Sprintf("Failed to read throughput: %s", responseErr.ErrorCode),
+				}
+			}
+		} else {
+			throughputInfo = map[string]any{
+				"type":    "error",
+				"message": fmt.Sprintf("Failed to read throughput: %v", throughputErr),
+			}
+		}
+	} else {
+		if manual, ok := throughputResp.ThroughputProperties.ManualThroughput(); ok {
+			throughputInfo = map[string]any{
+				"type":          "manual",
+				"ru_per_second": manual,
+			}
+		} else if maxRU, ok := throughputResp.ThroughputProperties.AutoscaleMaxThroughput(); ok {
+			throughputInfo = map[string]any{
+				"type":              "autoscale",
+				"max_ru_per_second": maxRU,
+			}
+		}
+	}
+
 	metadata := map[string]any{
 		"container_id":               response.ContainerProperties.ID,
 		"default_ttl":                response.ContainerProperties.DefaultTimeToLive,
 		"indexing_policy":            response.ContainerProperties.IndexingPolicy,
 		"partition_key_definition":   response.ContainerProperties.PartitionKeyDefinition,
 		"conflict_resolution_policy": response.ContainerProperties.ConflictResolutionPolicy,
+		"unique_key_policy":          response.ContainerProperties.UniqueKeyPolicy,
+		"throughput":                 throughputInfo,
 	}
 
 	jsonResult, err := json.Marshal(metadata)

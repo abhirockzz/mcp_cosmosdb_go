@@ -350,6 +350,16 @@ func TestMCPIntegration_ReadContainerMetadata(t *testing.T) {
 	assert.Equal(t, testOperationContainerName, response["container_id"], "Container ID should match")
 	assert.NotNil(t, response["partition_key_definition"], "Should have partition key definition")
 	assert.NotNil(t, response["indexing_policy"], "Should have indexing policy")
+	assert.Contains(t, response, "unique_key_policy", "Should have unique key policy")
+	assert.Contains(t, response, "throughput", "Should have throughput info")
+
+	// Verify throughput structure
+	throughput, ok := response["throughput"].(map[string]any)
+	require.True(t, ok, "Throughput should be a map")
+	assert.Contains(t, throughput, "type", "Throughput should have type field")
+	throughputType := throughput["type"].(string)
+	// On emulator: "unknown" (400), On real Azure: "manual", "autoscale", or "shared"
+	assert.Contains(t, []string{"manual", "autoscale", "shared", "unknown", "error"}, throughputType, "Throughput type should be valid")
 }
 
 // TestMCPIntegration_CreateContainer tests the create_container tool through the full MCP stack

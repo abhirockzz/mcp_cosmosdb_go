@@ -298,8 +298,99 @@ func TestReadContainerMetadata(t *testing.T) {
 			assert.Contains(t, metadata, "indexing_policy")
 			assert.Contains(t, metadata, "partition_key_definition")
 			assert.Contains(t, metadata, "conflict_resolution_policy")
+			assert.Contains(t, metadata, "unique_key_policy")
+			assert.Contains(t, metadata, "throughput")
+
+			// Verify throughput structure
+			throughput, ok := metadata["throughput"].(map[string]any)
+			require.True(t, ok, "throughput should be a map")
+			assert.Contains(t, throughput, "type")
+			throughputType := throughput["type"].(string)
+			// On emulator: "unknown" (400), On real Azure: "manual", "autoscale", or "shared"
+			assert.Contains(t, []string{"manual", "autoscale", "shared", "unknown", "error"}, throughputType)
 		})
 	}
+}
+
+func TestReadContainerMetadata_ThroughputScenarios(t *testing.T) {
+	ctx := context.Background()
+
+	// Create a container with manual throughput
+	manualContainerName := "testContainer_manual_throughput_diag"
+	_, _, err := CreateContainerToolHandler(ctx, nil, CreateContainerToolInput{
+		Account:          "dummy_account_does_not_matter",
+		Database:         testOperationDBName,
+		Container:        manualContainerName,
+		PartitionKeyPath: "/id",
+		Throughput:       func() *int32 { v := int32(400); return &v }(),
+	})
+	require.NoError(t, err, "Failed to create container with manual throughput")
+
+	t.Run("manual throughput container", func(t *testing.T) {
+		// Note: vNext emulator returns 400 for /offers endpoint (not implemented)
+		// so this test validates the "unknown" throughput type on emulator
+		toolResult, _, err := ReadContainerMetadataToolHandler(ctx, nil, ReadContainerMetadataToolInput{
+			Account:   "dummy_account_does_not_matter",
+			Database:  testOperationDBName,
+			Container: manualContainerName,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, toolResult)
+
+		textContent, ok := toolResult.Content[0].(*mcp.TextContent)
+		require.True(t, ok)
+
+		var metadata map[string]any
+		err = json.Unmarshal([]byte(textContent.Text), &metadata)
+		require.NoError(t, err)
+
+		throughput, ok := metadata["throughput"].(map[string]any)
+		require.True(t, ok, "throughput should be a map")
+
+		// On emulator, we expect "unknown" due to /offers endpoint not being implemented
+		// On real Azure, we'd expect "manual" with ru_per_second
+		throughputType := throughput["type"].(string)
+		assert.Contains(t, []string{"manual", "unknown"}, throughputType, "Should be manual (Azure) or unknown (emulator)")
+
+		if throughputType == "manual" {
+			assert.Contains(t, throughput, "ru_per_second", "Should have ru_per_second field")
+			ruPerSecond, ok := throughput["ru_per_second"].(float64)
+			require.True(t, ok, "ru_per_second should be a number")
+			assert.Equal(t, float64(400), ruPerSecond, "Should have 400 RU/s")
+		} else {
+			assert.Contains(t, throughput, "message", "Should have message explaining limitation")
+		}
+	})
+
+	t.Run("shared throughput container", func(t *testing.T) {
+		// Note: vNext emulator returns 400 for /offers endpoint
+		// On real Azure, a container without dedicated throughput returns 404 → "shared"
+		toolResult, _, err := ReadContainerMetadataToolHandler(ctx, nil, ReadContainerMetadataToolInput{
+			Account:   "dummy_account_does_not_matter",
+			Database:  testOperationDBName,
+			Container: testOperationContainerName,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, toolResult)
+
+		textContent, ok := toolResult.Content[0].(*mcp.TextContent)
+		require.True(t, ok)
+
+		var metadata map[string]any
+		err = json.Unmarshal([]byte(textContent.Text), &metadata)
+		require.NoError(t, err)
+
+		throughput, ok := metadata["throughput"].(map[string]any)
+		require.True(t, ok, "throughput should be a map")
+
+		// On emulator: "unknown" (400 error)
+		// On real Azure: "shared" (404 error) for container without dedicated throughput
+		throughputType := throughput["type"].(string)
+		assert.Contains(t, []string{"shared", "unknown"}, throughputType, "Should be shared (Azure) or unknown (emulator)")
+		assert.Contains(t, throughput, "message", "Should have message explaining throughput status")
+	})
 }
 
 func TestCreateContainer(t *testing.T) {
