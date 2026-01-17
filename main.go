@@ -56,6 +56,7 @@ func newServer() *mcp.Server {
 	mcp.AddTool(server, tools.AddItemToContainer(), tools.AddItemToContainerToolHandler)
 	mcp.AddTool(server, tools.ReadItem(), tools.ReadItemToolHandler)
 	mcp.AddTool(server, tools.ExecuteQuery(), tools.ExecuteQueryToolHandler)
+	mcp.AddTool(server, tools.BatchCreateItems(), tools.BatchCreateItemsToolHandler)
 
 	return server
 }

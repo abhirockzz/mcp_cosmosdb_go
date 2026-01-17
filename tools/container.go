@@ -397,3 +397,118 @@ func AddItemToContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, 
 		Message:   message,
 	}, nil
 }
+
+// BatchCreateItems creates a tool for adding multiple items in a single atomic transaction.
+// See limitations: https://learn.microsoft.com/en-us/azure/cosmos-db/transactional-batch?tabs=go#limitations
+func BatchCreateItems() *mcp.Tool {
+	return &mcp.Tool{
+		Name:        "batch_create_items",
+		Description: "Add multiple items (max 100) to a container in a single atomic transaction. All items must share the same partition key. Total payload must not exceed 2MB. See: https://learn.microsoft.com/en-us/azure/cosmos-db/transactional-batch?tabs=go#limitations",
+	}
+}
+
+type BatchCreateItemsToolInput struct {
+	Account      string   `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	Database     string   `json:"database" jsonschema:"Azure Cosmos DB database name"`
+	Container    string   `json:"container" jsonschema:"Name of the container to add items to"`
+	PartitionKey string   `json:"partitionKey" jsonschema:"Partition key value shared by all items"`
+	Items        []string `json:"items" jsonschema:"Array of JSON items to add. Each item must have an id field. Maximum 100 items."`
+}
+
+type BatchCreateItemsToolResult struct {
+	Account      string `json:"account"`
+	Database     string `json:"database"`
+	Container    string `json:"container"`
+	ItemsCreated int    `json:"items_created"`
+	Message      string `json:"message"`
+}
+
+func BatchCreateItemsToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input BatchCreateItemsToolInput) (*mcp.CallToolResult, BatchCreateItemsToolResult, error) {
+	accountName := input.Account
+
+	if accountName == "" {
+		return nil, BatchCreateItemsToolResult{}, errors.New("cosmos db account name missing")
+	}
+
+	database := input.Database
+
+	if database == "" {
+		return nil, BatchCreateItemsToolResult{}, errors.New("cosmos db database name missing")
+	}
+
+	container := input.Container
+
+	if container == "" {
+		return nil, BatchCreateItemsToolResult{}, errors.New("container name missing")
+	}
+
+	partitionKeyValue := input.PartitionKey
+
+	if partitionKeyValue == "" {
+		return nil, BatchCreateItemsToolResult{}, errors.New("partition key value missing")
+	}
+
+	items := input.Items
+
+	if len(items) == 0 {
+		return nil, BatchCreateItemsToolResult{}, errors.New("items array is empty")
+	}
+
+	if len(items) > 100 {
+		return nil, BatchCreateItemsToolResult{}, errors.New("batch exceeds maximum of 100 items per transaction")
+	}
+
+	client, err := GetCosmosClientFunc(accountName)
+	if err != nil {
+		return nil, BatchCreateItemsToolResult{}, err
+	}
+
+	databaseClient, err := client.NewDatabase(database)
+	if err != nil {
+		return nil, BatchCreateItemsToolResult{}, fmt.Errorf("error creating database client: %v", err)
+	}
+
+	containerClient, err := databaseClient.NewContainer(container)
+	if err != nil {
+		return nil, BatchCreateItemsToolResult{}, fmt.Errorf("error creating container client: %v", err)
+	}
+
+	partitionKey := azcosmos.NewPartitionKeyString(partitionKeyValue)
+
+	// Create transactional batch
+	batch := containerClient.NewTransactionalBatch(partitionKey)
+
+	// Add all items to the batch
+	for _, item := range items {
+		batch.CreateItem([]byte(item), nil)
+	}
+
+	// Execute the batch
+	batchResponse, err := containerClient.ExecuteTransactionalBatch(ctx, batch, nil)
+	if err != nil {
+		var responseErr *azcore.ResponseError
+		errors.As(err, &responseErr)
+		return nil, BatchCreateItemsToolResult{}, fmt.Errorf("error executing batch: %v", err)
+	}
+
+	// Check if the batch was successful
+	if !batchResponse.Success {
+		// Find the failed operation
+		for i, result := range batchResponse.OperationResults {
+			if result.StatusCode != 200 && result.StatusCode != 201 && result.StatusCode != 424 {
+				return nil, BatchCreateItemsToolResult{}, fmt.Errorf("batch failed at item index %d with status code %d", i, result.StatusCode)
+			}
+		}
+		return nil, BatchCreateItemsToolResult{}, errors.New("batch operation failed")
+	}
+
+	message := fmt.Sprintf("Successfully created %d items in container '%s' in database '%s'", len(items), container, database)
+
+	return nil, BatchCreateItemsToolResult{
+		Account:      accountName,
+		Database:     database,
+		Container:    container,
+		ItemsCreated: len(items),
+		Message:      message,
+	}, nil
+}

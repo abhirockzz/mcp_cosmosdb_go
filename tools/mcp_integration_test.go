@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -580,4 +581,177 @@ func TestMCPIntegration_ExecuteQuery(t *testing.T) {
 	assert.Equal(t, itemID, firstItem["id"], "Item ID should match")
 	assert.Equal(t, "Engineering", firstItem["department"], "Department should match")
 	assert.Equal(t, "query_test@example.com", firstItem["email"], "Email should match")
+}
+
+// TestMCPIntegration_BatchCreateItems tests the batch_create_items tool through the full MCP stack
+func TestMCPIntegration_BatchCreateItems(t *testing.T) {
+	ctx := context.Background()
+
+	// Create MCP server and register tools
+	server := mcp.NewServer(&mcp.Implementation{
+		Name:    "test-cosmosdb-server",
+		Version: "0.0.1",
+	}, nil)
+
+	mcp.AddTool(server, BatchCreateItems(), BatchCreateItemsToolHandler)
+
+	// Create in-memory transports for testing
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	// Connect server
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	require.NoError(t, err)
+	defer serverSession.Close()
+
+	// Connect client
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "test-client",
+		Version: "0.0.1",
+	}, nil)
+
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
+	require.NoError(t, err)
+	defer clientSession.Close()
+
+	// Call the batch_create_items tool via MCP protocol
+	partitionKey := "mcp_batch_pk_1"
+	result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "batch_create_items",
+		Arguments: map[string]any{
+			"account":      "dummy_account_does_not_matter",
+			"database":     testOperationDBName,
+			"container":    testOperationContainerName,
+			"partitionKey": partitionKey,
+			"items": []string{
+				`{"id": "mcp_batch_item_1", "category": "mcp_batch_pk_1", "value": "batch1@example.com"}`,
+				`{"id": "mcp_batch_item_2", "category": "mcp_batch_pk_1", "value": "batch2@example.com"}`,
+				`{"id": "mcp_batch_item_3", "category": "mcp_batch_pk_1", "value": "batch3@example.com"}`,
+			},
+		},
+	})
+
+	// Verify the call succeeded
+	require.NoError(t, err, "CallTool should not return an error")
+	require.NotNil(t, result, "Result should not be nil")
+	require.False(t, result.IsError, "Result should not be an error")
+	require.NotEmpty(t, result.Content, "Result content should not be empty")
+
+	// Parse the response content
+	require.Len(t, result.Content, 1, "Should have exactly one content item")
+
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	require.True(t, ok, "Content should be TextContent")
+
+	// Parse the JSON response
+	var response BatchCreateItemsToolResult
+	err = json.Unmarshal([]byte(textContent.Text), &response)
+	require.NoError(t, err, "Response should be valid JSON")
+
+	// Verify the response contains expected data
+	assert.Equal(t, "dummy_account_does_not_matter", response.Account, "Account should match")
+	assert.Equal(t, testOperationDBName, response.Database, "Database should match")
+	assert.Equal(t, testOperationContainerName, response.Container, "Container should match")
+	assert.Equal(t, 3, response.ItemsCreated, "Should have created 3 items")
+	assert.Contains(t, response.Message, "Successfully created", "Message should indicate success")
+}
+
+// TestMCPIntegration_BatchCreateItems_ValidationError tests that validation errors are properly returned via MCP
+func TestMCPIntegration_BatchCreateItems_ValidationError(t *testing.T) {
+	ctx := context.Background()
+
+	// Create MCP server and register tools
+	server := mcp.NewServer(&mcp.Implementation{
+		Name:    "test-cosmosdb-server",
+		Version: "0.0.1",
+	}, nil)
+
+	mcp.AddTool(server, BatchCreateItems(), BatchCreateItemsToolHandler)
+
+	// Create in-memory transports for testing
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	// Connect server
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	require.NoError(t, err)
+	defer serverSession.Close()
+
+	// Connect client
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "test-client",
+		Version: "0.0.1",
+	}, nil)
+
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
+	require.NoError(t, err)
+	defer clientSession.Close()
+
+	// Test empty items array
+	result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "batch_create_items",
+		Arguments: map[string]any{
+			"account":      "dummy_account_does_not_matter",
+			"database":     testOperationDBName,
+			"container":    testOperationContainerName,
+			"partitionKey": "test_pk",
+			"items":        []string{},
+		},
+	})
+
+	// The call itself should succeed but the result should indicate an error
+	require.NoError(t, err, "CallTool should not return a transport error")
+	require.NotNil(t, result, "Result should not be nil")
+	require.True(t, result.IsError, "Result should be an error for empty items array")
+}
+
+// TestMCPIntegration_BatchCreateItems_ExceedsLimit tests that exceeding 100 items limit is properly handled via MCP
+func TestMCPIntegration_BatchCreateItems_ExceedsLimit(t *testing.T) {
+	ctx := context.Background()
+
+	// Create MCP server and register tools
+	server := mcp.NewServer(&mcp.Implementation{
+		Name:    "test-cosmosdb-server",
+		Version: "0.0.1",
+	}, nil)
+
+	mcp.AddTool(server, BatchCreateItems(), BatchCreateItemsToolHandler)
+
+	// Create in-memory transports for testing
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	// Connect server
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	require.NoError(t, err)
+	defer serverSession.Close()
+
+	// Connect client
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "test-client",
+		Version: "0.0.1",
+	}, nil)
+
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
+	require.NoError(t, err)
+	defer clientSession.Close()
+
+	// Generate 101 items to exceed the limit
+	items := make([]string, 101)
+	for i := 0; i < 101; i++ {
+		items[i] = fmt.Sprintf(`{"id": "exceed_item_%d", "value": "value_%d"}`, i, i)
+	}
+
+	result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{
+		Name: "batch_create_items",
+		Arguments: map[string]any{
+			"account":      "dummy_account_does_not_matter",
+			"database":     testOperationDBName,
+			"container":    testOperationContainerName,
+			"partitionKey": "exceed_pk",
+			"items":        items,
+		},
+	})
+
+	// The call itself should succeed but the result should indicate an error
+	require.NoError(t, err, "CallTool should not return a transport error")
+	require.NotNil(t, result, "Result should not be nil")
+	require.True(t, result.IsError, "Result should be an error for exceeding 100 items limit")
 }

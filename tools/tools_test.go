@@ -837,3 +837,219 @@ func TestExecuteQuery(t *testing.T) {
 		})
 	}
 }
+
+func TestBatchCreateItems(t *testing.T) {
+
+	tests := []struct {
+		name           string
+		input          BatchCreateItemsToolInput
+		expectError    bool
+		expectedErrMsg string
+		expectedCount  int
+	}{
+		{
+			name: "valid batch with multiple items",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     testOperationDBName,
+				Container:    testOperationContainerName,
+				PartitionKey: "batch_pk_1",
+				Items: []string{
+					`{"id": "batch_item_1", "category": "batch_pk_1", "value": "item1@foo.com"}`,
+					`{"id": "batch_item_2", "category": "batch_pk_1", "value": "item2@foo.com"}`,
+					`{"id": "batch_item_3", "category": "batch_pk_1", "value": "item3@foo.com"}`,
+				},
+			},
+			expectError:   false,
+			expectedCount: 3,
+		},
+		{
+			name: "valid batch with single item",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     testOperationDBName,
+				Container:    testOperationContainerName,
+				PartitionKey: "batch_pk_2",
+				Items: []string{
+					`{"id": "batch_single_item", "category": "batch_pk_2", "value": "single@foo.com"}`,
+				},
+			},
+			expectError:   false,
+			expectedCount: 1,
+		},
+		{
+			name: "empty account name",
+			input: BatchCreateItemsToolInput{
+				Account:      "",
+				Database:     testOperationDBName,
+				Container:    testOperationContainerName,
+				PartitionKey: "batch_pk",
+				Items:        []string{`{"id": "item1", "value": "test"}`},
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db account name missing",
+		},
+		{
+			name: "empty database name",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     "",
+				Container:    testOperationContainerName,
+				PartitionKey: "batch_pk",
+				Items:        []string{`{"id": "item1", "value": "test"}`},
+			},
+			expectError:    true,
+			expectedErrMsg: "cosmos db database name missing",
+		},
+		{
+			name: "empty container name",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     testOperationDBName,
+				Container:    "",
+				PartitionKey: "batch_pk",
+				Items:        []string{`{"id": "item1", "value": "test"}`},
+			},
+			expectError:    true,
+			expectedErrMsg: "container name missing",
+		},
+		{
+			name: "empty partition key",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     testOperationDBName,
+				Container:    testOperationContainerName,
+				PartitionKey: "",
+				Items:        []string{`{"id": "item1", "value": "test"}`},
+			},
+			expectError:    true,
+			expectedErrMsg: "partition key value missing",
+		},
+		{
+			name: "empty items array",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     testOperationDBName,
+				Container:    testOperationContainerName,
+				PartitionKey: "batch_pk",
+				Items:        []string{},
+			},
+			expectError:    true,
+			expectedErrMsg: "items array is empty",
+		},
+		{
+			name: "exceeds 100 items limit",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     testOperationDBName,
+				Container:    testOperationContainerName,
+				PartitionKey: "batch_pk",
+				Items:        generateItemsArray(101),
+			},
+			expectError:    true,
+			expectedErrMsg: "batch exceeds maximum of 100 items",
+		},
+		{
+			name: "missing id in item",
+			input: BatchCreateItemsToolInput{
+				Account:      "dummy_account_does_not_matter",
+				Database:     testOperationDBName,
+				Container:    testOperationContainerName,
+				PartitionKey: "batch_pk_3",
+				Items: []string{
+					`{"id": "valid_item", "category": "batch_pk_3", "value": "valid"}`,
+					`{"category": "batch_pk_3", "value": "missing_id"}`,
+				},
+			},
+			expectError:    true,
+			expectedErrMsg: "batch failed",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			_, response, err := BatchCreateItemsToolHandler(context.Background(), nil, test.input)
+
+			if test.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, "dummy_account_does_not_matter", response.Account)
+			assert.Equal(t, testOperationDBName, response.Database)
+			assert.Equal(t, testOperationContainerName, response.Container)
+			assert.Equal(t, test.expectedCount, response.ItemsCreated)
+			assert.Contains(t, response.Message, "Successfully created")
+		})
+	}
+}
+
+func TestBatchCreateItems_DuplicateId(t *testing.T) {
+	// Test that batch fails atomically when duplicate id is encountered
+	partitionKey := "batch_dup_pk"
+
+	// First, create an item
+	_, _, err := AddItemToContainerToolHandler(context.Background(), nil, AddItemToContainerToolInput{
+		Account:      "dummy_account_does_not_matter",
+		Database:     testOperationDBName,
+		Container:    testOperationContainerName,
+		PartitionKey: partitionKey,
+		Item:         `{"id": "existing_item", "category": "batch_dup_pk", "value": "existing"}`,
+	})
+	require.NoError(t, err)
+
+	// Now try to batch create items including the duplicate
+	_, _, err = BatchCreateItemsToolHandler(context.Background(), nil, BatchCreateItemsToolInput{
+		Account:      "dummy_account_does_not_matter",
+		Database:     testOperationDBName,
+		Container:    testOperationContainerName,
+		PartitionKey: partitionKey,
+		Items: []string{
+			`{"id": "new_item_1", "category": "batch_dup_pk", "value": "new1"}`,
+			`{"id": "existing_item", "category": "batch_dup_pk", "value": "duplicate"}`,
+			`{"id": "new_item_2", "category": "batch_dup_pk", "value": "new2"}`,
+		},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "batch failed")
+}
+
+func TestBatchCreateItems_MaxLimit(t *testing.T) {
+	// Test that exactly 100 items works (boundary test)
+	partitionKey := "batch_max_pk"
+
+	items := generateItemsArrayWithPrefix(100, partitionKey)
+
+	_, response, err := BatchCreateItemsToolHandler(context.Background(), nil, BatchCreateItemsToolInput{
+		Account:      "dummy_account_does_not_matter",
+		Database:     testOperationDBName,
+		Container:    testOperationContainerName,
+		PartitionKey: partitionKey,
+		Items:        items,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 100, response.ItemsCreated)
+}
+
+// Helper function to generate an array of items for testing
+func generateItemsArray(count int) []string {
+	items := make([]string, count)
+	for i := 0; i < count; i++ {
+		items[i] = fmt.Sprintf(`{"id": "gen_item_%d", "value": "value_%d"}`, i, i)
+	}
+	return items
+}
+
+// Helper function to generate items with a specific partition key value
+func generateItemsArrayWithPrefix(count int, partitionKey string) []string {
+	items := make([]string, count)
+	for i := range count {
+		items[i] = fmt.Sprintf(`{"id": "max_item_%d", "category": "%s", "value": "value_%d"}`, i, partitionKey, i)
+	}
+	return items
+}
