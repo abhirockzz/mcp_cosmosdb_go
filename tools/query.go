@@ -79,8 +79,18 @@ func ReadItemToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input Read
 func ExecuteQuery() *mcp.Tool {
 
 	return &mcp.Tool{
-		Name:        "execute_query",
-		Description: "Execute a SQL query on a Cosmos DB container. Ensure that the query string is valid and adheres to Cosmos DB SQL syntax. To use a partition key in the query directly, add it in the WHERE clause. Example: SELECT * FROM c WHERE c.department='HR'",
+		Name: "execute_query",
+		Description: `Execute a SQL query on a Cosmos DB container. Ensure that the query string is valid and adheres to Cosmos DB SQL syntax. To use a partition key in the query directly, add it in the WHERE clause. Example: SELECT * FROM c WHERE c.department='HR'.
+
+IMPORTANT LIMITATION: The Azure Cosmos DB Gateway API (used by the Go SDK) only supports simple projections and filtering for cross-partition queries.
+
+UNSUPPORTED cross-partition operations: TOP, ORDER BY, OFFSET LIMIT, Aggregates (COUNT, SUM, AVG, MIN, MAX), DISTINCT, GROUP BY.
+
+WORKAROUNDS:
+1. Provide a partition key value to scope the query to a single partition - this enables all query features.
+2. For cross-partition queries, use only SELECT and WHERE clauses, then sort/limit/aggregate the results. Be transparent about these limitations and let the user know (brief note) when you do so.
+
+For details, refer to https://learn.microsoft.com/en-us/rest/api/cosmos-db/querying-cosmosdb-resources-using-the-rest-api#queries-that-cannot-be-served-by-gateway`,
 	}
 }
 
