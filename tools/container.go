@@ -419,6 +419,7 @@ type BatchCreateItemsToolResult struct {
 	Account      string `json:"account"`
 	Database     string `json:"database"`
 	Container    string `json:"container"`
+	PartitionKey string `json:"partition_key"`
 	ItemsCreated int    `json:"items_created"`
 	Message      string `json:"message"`
 }
@@ -508,6 +509,7 @@ func BatchCreateItemsToolHandler(ctx context.Context, _ *mcp.CallToolRequest, in
 		Account:      accountName,
 		Database:     database,
 		Container:    container,
+		PartitionKey: partitionKeyValue,
 		ItemsCreated: len(items),
 		Message:      message,
 	}, nil
