@@ -86,9 +86,10 @@ IMPORTANT LIMITATION: The Azure Cosmos DB Gateway API (used by the Go SDK) only 
 
 UNSUPPORTED cross-partition operations: TOP, ORDER BY, OFFSET LIMIT, Aggregates (COUNT, SUM, AVG, MIN, MAX), DISTINCT, GROUP BY.
 
-WORKAROUNDS:
-1. Provide a partition key value to scope the query to a single partition - this enables all query features.
-2. For cross-partition queries, use only SELECT and WHERE clauses, then sort/limit/aggregate the results. Be transparent about these limitations and let the user know (brief note) when you do so.
+WORKAROUNDS (in this order):
+- Unless required, for cross-partition queries, use only SELECT and WHERE clauses, then sort/limit/aggregate the results. For example, assume you have formed this query - SELECT c.desc, c.price FROM c ORDER BY c.price DESC. Figure out if ORDER BY is really needed based on user requirements.
+- Check if you can use a different query without the unsupported features.
+- If that does not work, add a partition key value to scope the query to a single partition.
 
 For details, refer to https://learn.microsoft.com/en-us/rest/api/cosmos-db/querying-cosmosdb-resources-using-the-rest-api#queries-that-cannot-be-served-by-gateway`,
 	}

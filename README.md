@@ -1,16 +1,18 @@
 # Go based implementation of an MCP server for Azure Cosmos DB
 
-This is a Go based implementation of an MCP server for Azure Cosmos DB using the [Azure SDK for Go](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos) and the official [MCP Go SDK](https://github.com/modelcontextprotocol/go-sdk). 
+This is a Go based implementation of an MCP server for Azure Cosmos DB using the [Azure SDK for Go](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos) and the official [MCP Go SDK](https://github.com/modelcontextprotocol/go-sdk).
 
 It exposes the following tools for interacting with Azure Cosmos DB:
 
-- **List Databases**: Retrieve a list of all databases in a Cosmos DB account.
-- **List Containers**: Retrieve a list of all containers in a specific database.
-- **Read Container Metadata**: Fetch metadata or configuration details of a specific container.
-- **Create Container**: Create a new container in a specified database with a defined partition key.
-- **Add Item to Container**: Add a new item to a specified container in a database.
-- **Read Item**: Read a specific item from a container using its ID and partition key.
-- **Execute Query**: Execute a SQL query on a Cosmos DB container with optional partition key scoping.
+1. **List Databases**: Retrieve a list of all databases in a Cosmos DB account.
+2. **Create Database**: Create a new database in the Cosmos DB account.
+3. **List Containers**: Retrieve a list of all containers in a specific database.
+4. **Read Container Metadata**: Fetch metadata or configuration details of a specific container.
+5. **Create Container**: Create a new container in a specified database with a defined partition key.
+6. **Add Item to Container**: Add a new item to a specified container in a database.
+7. **Read Item**: Read a specific item from a container using its ID and partition key.
+8. **Execute Query**: Execute a SQL query on a Cosmos DB container with optional partition key scoping.
+9. **Batch Create Items**: Add multiple items to a container using Transactional Batch operation.
 
 ⚠️ This project is not intended to replace the [Azure MCP Server](https://github.com/azure/azure-mcp) or [Azure Cosmos DB MCP Toolkit](https://github.com/AzureCosmosDB/MCPToolKit). Rather, it serves as an experimental **learning tool** that demonstrates how to combine the Azure Go SDK and MCP Go SDK to build AI tooling for Azure Cosmos DB.
 
