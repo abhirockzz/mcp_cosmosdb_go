@@ -61,8 +61,6 @@ func ListContainersToolHandler(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	for containerPager.More() {
 		containerResponse, err := containerPager.NextPage(ctx)
 		if err != nil {
-			var responseErr *azcore.ResponseError
-			errors.As(err, &responseErr)
 			return nil, ListContainersToolResult{}, err
 		}
 
@@ -139,8 +137,6 @@ func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolReques
 
 	response, err := containerClient.Read(ctx, nil)
 	if err != nil {
-		var responseErr *azcore.ResponseError
-		errors.As(err, &responseErr)
 		return nil, ReadContainerMetadataToolResult{}, err
 	}
 
@@ -296,8 +292,6 @@ func CreateContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, inp
 	}
 
 	if err != nil {
-		var responseErr *azcore.ResponseError
-		errors.As(err, &responseErr)
 		return nil, CreateContainerToolResult{}, fmt.Errorf("error creating container: %v", err)
 	}
 
@@ -383,8 +377,6 @@ func AddItemToContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, 
 
 	_, err = containerClient.CreateItem(ctx, partitionKey, []byte(itemJSON), nil)
 	if err != nil {
-		var responseErr *azcore.ResponseError
-		errors.As(err, &responseErr)
 		return nil, AddItemToContainerToolResult{}, fmt.Errorf("error adding item to container: %v", err)
 	}
 
@@ -487,8 +479,6 @@ func BatchCreateItemsToolHandler(ctx context.Context, _ *mcp.CallToolRequest, in
 	// Execute the batch
 	batchResponse, err := containerClient.ExecuteTransactionalBatch(ctx, batch, nil)
 	if err != nil {
-		var responseErr *azcore.ResponseError
-		errors.As(err, &responseErr)
 		return nil, BatchCreateItemsToolResult{}, fmt.Errorf("error executing batch: %v", err)
 	}
 

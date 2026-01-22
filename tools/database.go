@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -45,8 +44,6 @@ func ListDatabasesToolHandler(ctx context.Context, request *mcp.CallToolRequest,
 	for queryPager.More() {
 		queryResponse, err := queryPager.NextPage(context.Background())
 		if err != nil {
-			var responseErr *azcore.ResponseError
-			errors.As(err, &responseErr)
 			return nil, ListDatabasesToolResult{}, err
 		}
 
