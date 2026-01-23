@@ -2,7 +2,7 @@
 
 This is a Go based implementation of an MCP server for Azure Cosmos DB using the [Azure SDK for Go](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos) and the official [MCP Go SDK](https://github.com/modelcontextprotocol/go-sdk).
 
-It exposes the following tools for interacting with Azure Cosmos DB:
+It works with the Azure Cosmos DB service and the [vNext emulator](https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux), and exposes the following tools for interacting with Azure Cosmos DB:
 
 1. **List Databases**: Retrieve a list of all databases in a Cosmos DB account.
 2. **Create Database**: Create a new database in the Cosmos DB account.
@@ -31,7 +31,9 @@ cd mcp_cosmosdb_go
 go build -o mcp_azure_cosmosdb_go main.go
 ```
 
-**Note**: The MCP server uses the [DefaultAzureCredential](https://learn.microsoft.com/en-us/azure/developer/go/sdk/authentication/credential-chains#defaultazurecredential-overview) implementation from the Azure SDK for Go to authenticate with Azure Cosmos DB. This means that you can authenticate using various methods, including environment variables, managed identity, or Azure CLI login, among others.
+**Note**: The MCP server uses the [DefaultAzureCredential](https://learn.microsoft.com/en-us/azure/developer/go/sdk/authentication/credential-chains#defaultazurecredential-overview) implementation from the Azure SDK for Go to authenticate with Azure Cosmos DB. This means that you can authenticate using various methods, including environment variables, managed identity, or Azure CLI login, among others. 
+
+> This ^ is not applicable to the local emulator since it uses a well known key-based authentication.
 
 This MCP server supports both Streamable HTTP and Stdio transports. You can run the MCP server in two modes:
 
