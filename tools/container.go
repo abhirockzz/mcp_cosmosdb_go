@@ -15,12 +15,12 @@ func ListContainers() *mcp.Tool {
 
 	return &mcp.Tool{
 		Name:        "list_containers",
-		Description: "List all containers in the specified Azure Cosmos DB database",
+		Description: "List all containers in the specified Azure Cosmos DB database or local emulator. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service.",
 	}
 }
 
 type ListContainersToolInput struct {
-	Account  string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database string `json:"database" jsonschema:"Azure Cosmos DB database name"`
 }
 
@@ -32,10 +32,8 @@ type ListContainersToolResult struct {
 
 func ListContainersToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ListContainersToolInput) (*mcp.CallToolResult, ListContainersToolResult, error) {
 
-	accountName := input.Account
-
-	if accountName == "" {
-		return nil, ListContainersToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, ListContainersToolResult{}, err
 	}
 
 	database := input.Database
@@ -44,7 +42,7 @@ func ListContainersToolHandler(ctx context.Context, _ *mcp.CallToolRequest, inpu
 		return nil, ListContainersToolResult{}, errors.New("cosmos db database name missing")
 	}
 
-	client, err := GetCosmosClientFunc(accountName)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, ListContainersToolResult{}, err
 	}
@@ -70,7 +68,7 @@ func ListContainersToolHandler(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	}
 
 	return nil, ListContainersToolResult{
-		Account:    accountName,
+		Account:    input.Account,
 		Database:   database,
 		Containers: containerNames,
 	}, nil
@@ -81,12 +79,12 @@ func ReadContainerMetadata() *mcp.Tool {
 
 	return &mcp.Tool{
 		Name:        "read_container_metadata",
-		Description: "Read metadata of the specified container in Azure Cosmos DB",
+		Description: "Read metadata of the specified container in Azure Cosmos DB or local emulator. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service.",
 	}
 }
 
 type ReadContainerMetadataToolInput struct {
-	Account   string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database  string `json:"database" jsonschema:"Azure Cosmos DB database name"`
 	Container string `json:"container" jsonschema:"Azure Cosmos DB container name"`
 }
@@ -102,10 +100,8 @@ type ReadContainerMetadataToolResult struct {
 // func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ReadContainerMetadataToolInput) (*mcp.CallToolResult, ReadContainerMetadataToolResult, error) {
 func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ReadContainerMetadataToolInput) (*mcp.CallToolResult, any, error) {
 
-	accountName := input.Account
-
-	if accountName == "" {
-		return nil, ReadContainerMetadataToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, ReadContainerMetadataToolResult{}, err
 	}
 
 	database := input.Database
@@ -120,7 +116,7 @@ func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolReques
 		return nil, ReadContainerMetadataToolResult{}, errors.New("container name missing")
 	}
 
-	client, err := GetCosmosClientFunc(accountName)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, ReadContainerMetadataToolResult{}, err
 	}
@@ -221,12 +217,12 @@ func ReadContainerMetadataToolHandler(ctx context.Context, _ *mcp.CallToolReques
 func CreateContainer() *mcp.Tool {
 	return &mcp.Tool{
 		Name:        "create_container",
-		Description: "Create a new container in the specified Azure Cosmos DB database",
+		Description: "Create a new container in the specified Azure Cosmos DB database or local emulator. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service.",
 	}
 }
 
 type CreateContainerToolInput struct {
-	Account          string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database         string `json:"database" jsonschema:"Azure Cosmos DB database name"`
 	Container        string `json:"container" jsonschema:"Name of the container to create"`
 	PartitionKeyPath string `json:"partitionKeyPath" jsonschema:"Partition key path for the container, example /id, /tentant, /category etc."`
@@ -241,10 +237,8 @@ type CreateContainerToolResult struct {
 }
 
 func CreateContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input CreateContainerToolInput) (*mcp.CallToolResult, CreateContainerToolResult, error) {
-	accountName := input.Account
-
-	if accountName == "" {
-		return nil, CreateContainerToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, CreateContainerToolResult{}, err
 	}
 
 	database := input.Database
@@ -265,7 +259,7 @@ func CreateContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, inp
 		return nil, CreateContainerToolResult{}, errors.New("partition key path missing")
 	}
 
-	client, err := GetCosmosClientFunc(accountName)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, CreateContainerToolResult{}, err
 	}
@@ -298,7 +292,7 @@ func CreateContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, inp
 	message := fmt.Sprintf("Container '%s' created successfully in database '%s'", container, database)
 
 	return nil, CreateContainerToolResult{
-		Account:   accountName,
+		Account:   input.Account,
 		Database:  database,
 		Container: container,
 		Message:   message,
@@ -308,12 +302,12 @@ func CreateContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, inp
 func AddItemToContainer() *mcp.Tool {
 	return &mcp.Tool{
 		Name:        "add_item_to_container",
-		Description: "Add an item to the specified container in Azure Cosmos DB",
+		Description: "Add an item to the specified container in Azure Cosmos DB or local emulator. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service.",
 	}
 }
 
 type AddItemToContainerToolInput struct {
-	Account      string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database     string `json:"database" jsonschema:"Azure Cosmos DB database name"`
 	Container    string `json:"container" jsonschema:"Name of the container to add the item to"`
 	PartitionKey string `json:"partitionKey" jsonschema:"Partition key value for the item"`
@@ -328,10 +322,8 @@ type AddItemToContainerToolResult struct {
 }
 
 func AddItemToContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input AddItemToContainerToolInput) (*mcp.CallToolResult, AddItemToContainerToolResult, error) {
-	accountName := input.Account
-
-	if accountName == "" {
-		return nil, AddItemToContainerToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, AddItemToContainerToolResult{}, err
 	}
 
 	database := input.Database
@@ -358,7 +350,7 @@ func AddItemToContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, 
 		return nil, AddItemToContainerToolResult{}, errors.New("item JSON missing")
 	}
 
-	client, err := GetCosmosClientFunc(accountName)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, AddItemToContainerToolResult{}, err
 	}
@@ -383,7 +375,7 @@ func AddItemToContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, 
 	message := fmt.Sprintf("Item added successfully to container '%s' in database '%s'", container, database)
 
 	return nil, AddItemToContainerToolResult{
-		Account:   accountName,
+		Account:   input.Account,
 		Database:  database,
 		Container: container,
 		Message:   message,
@@ -395,12 +387,12 @@ func AddItemToContainerToolHandler(ctx context.Context, _ *mcp.CallToolRequest, 
 func BatchCreateItems() *mcp.Tool {
 	return &mcp.Tool{
 		Name:        "batch_create_items",
-		Description: "Add multiple items (max 100) to a container in a single atomic transaction. All items must share the same partition key. Total payload must not exceed 2MB. See: https://learn.microsoft.com/en-us/azure/cosmos-db/transactional-batch?tabs=go#limitations",
+		Description: "Add multiple items (max 100) to a container in a single atomic transaction in Azure Cosmos DB or local emulator. All items must share the same partition key. Total payload must not exceed 2MB. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service. See: https://learn.microsoft.com/en-us/azure/cosmos-db/transactional-batch?tabs=go#limitations",
 	}
 }
 
 type BatchCreateItemsToolInput struct {
-	Account      string   `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database     string   `json:"database" jsonschema:"Azure Cosmos DB database name"`
 	Container    string   `json:"container" jsonschema:"Name of the container to add items to"`
 	PartitionKey string   `json:"partitionKey" jsonschema:"Partition key value shared by all items"`
@@ -417,10 +409,8 @@ type BatchCreateItemsToolResult struct {
 }
 
 func BatchCreateItemsToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input BatchCreateItemsToolInput) (*mcp.CallToolResult, BatchCreateItemsToolResult, error) {
-	accountName := input.Account
-
-	if accountName == "" {
-		return nil, BatchCreateItemsToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, BatchCreateItemsToolResult{}, err
 	}
 
 	database := input.Database
@@ -451,7 +441,7 @@ func BatchCreateItemsToolHandler(ctx context.Context, _ *mcp.CallToolRequest, in
 		return nil, BatchCreateItemsToolResult{}, errors.New("batch exceeds maximum of 100 items per transaction")
 	}
 
-	client, err := GetCosmosClientFunc(accountName)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, BatchCreateItemsToolResult{}, err
 	}
@@ -496,7 +486,7 @@ func BatchCreateItemsToolHandler(ctx context.Context, _ *mcp.CallToolRequest, in
 	message := fmt.Sprintf("Successfully created %d items in container '%s' in database '%s'", len(items), container, database)
 
 	return nil, BatchCreateItemsToolResult{
-		Account:      accountName,
+		Account:      input.Account,
 		Database:     database,
 		Container:    container,
 		PartitionKey: partitionKeyValue,

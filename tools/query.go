@@ -13,12 +13,12 @@ func ReadItem() *mcp.Tool {
 
 	return &mcp.Tool{
 		Name:        "read_item",
-		Description: "Read a specific item from a container in an Azure Cosmos DB database using the item ID and partition key",
+		Description: "Read a specific item from a container in an Azure Cosmos DB database or local emulator using the item ID and partition key. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service.",
 	}
 }
 
 type ReadItemToolInput struct {
-	Account      string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database     string `json:"database" jsonschema:"Name of the database"`
 	Container    string `json:"container" jsonschema:"Name of the container to read data from"`
 	ItemID       string `json:"itemID" jsonschema:"ID of the item to read"`
@@ -31,8 +31,8 @@ type ReadItemToolResult struct {
 
 func ReadItemToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ReadItemToolInput) (*mcp.CallToolResult, ReadItemToolResult, error) {
 
-	if input.Account == "" {
-		return nil, ReadItemToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, ReadItemToolResult{}, err
 	}
 
 	if input.Database == "" {
@@ -51,7 +51,7 @@ func ReadItemToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input Read
 		return nil, ReadItemToolResult{}, errors.New("partition key missing")
 	}
 
-	client, err := GetCosmosClientFunc(input.Account)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, ReadItemToolResult{}, err
 	}
@@ -80,7 +80,7 @@ func ExecuteQuery() *mcp.Tool {
 
 	return &mcp.Tool{
 		Name: "execute_query",
-		Description: `Execute a SQL query on a Cosmos DB container. Ensure that the query string is valid and adheres to Cosmos DB SQL syntax. To use a partition key in the query directly, add it in the WHERE clause. Example: SELECT * FROM c WHERE c.department='HR'.
+		Description: `Execute a SQL query on a Cosmos DB container in Azure Cosmos DB or local emulator. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service. Ensure that the query string is valid and adheres to Cosmos DB SQL syntax. To use a partition key in the query directly, add it in the WHERE clause. Example: SELECT * FROM c WHERE c.department='HR'.
 
 IMPORTANT LIMITATION: The Azure Cosmos DB Gateway API (used by the Go SDK) only supports simple projections and filtering for cross-partition queries.
 
@@ -96,7 +96,7 @@ For details, refer to https://learn.microsoft.com/en-us/rest/api/cosmos-db/query
 }
 
 type ExecuteQueryToolInput struct {
-	Account      string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database     string `json:"database" jsonschema:"Name of the database"`
 	Container    string `json:"container" jsonschema:"Name of the container to query"`
 	Query        string `json:"query" jsonschema:"The SQL query string to execute"`
@@ -111,8 +111,8 @@ type ExecuteQueryToolResult struct {
 
 func ExecuteQueryToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input ExecuteQueryToolInput) (*mcp.CallToolResult, ExecuteQueryToolResult, error) {
 
-	if input.Account == "" {
-		return nil, ExecuteQueryToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, ExecuteQueryToolResult{}, err
 	}
 
 	if input.Database == "" {
@@ -127,7 +127,7 @@ func ExecuteQueryToolHandler(ctx context.Context, _ *mcp.CallToolRequest, input 
 		return nil, ExecuteQueryToolResult{}, errors.New("query string missing")
 	}
 
-	client, err := GetCosmosClientFunc(input.Account)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, ExecuteQueryToolResult{}, err
 	}

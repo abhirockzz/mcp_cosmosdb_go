@@ -36,7 +36,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	// Override the client function for tests
+	// Override the client function for tests (new method)
+	GetClientFunc = func(config ConnectionConfig) (*azcosmos.Client, error) {
+		return client, nil // Always return the emulator client
+	}
+
+	// Also override legacy function for backward compatibility
 	GetCosmosClientFunc = func(account string) (*azcosmos.Client, error) {
 		return client, nil // Always return the emulator client
 	}
@@ -71,7 +76,7 @@ func TestListDatabases(t *testing.T) {
 		{
 			name: "valid account name",
 			input: ListDatabasesToolInput{
-				Account: "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 			},
 			expectError:    false,
 			expectedResult: testOperationDBName,
@@ -79,10 +84,10 @@ func TestListDatabases(t *testing.T) {
 		{
 			name: "empty account name",
 			input: ListDatabasesToolInput{
-				Account: "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 	}
 
@@ -90,7 +95,7 @@ func TestListDatabases(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			_, response, err := ListDatabasesToolHandler(context.Background(), nil, ListDatabasesToolInput{
-				Account: test.input.Account,
+				ConnectionConfig: ConnectionConfig{Account: test.input.Account},
 			})
 
 			if test.expectError {
@@ -118,7 +123,7 @@ func TestCreateDatabase(t *testing.T) {
 		{
 			name: "valid arguments",
 			input: CreateDatabaseToolInput{
-				Account:  "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database: "newTestDatabase1",
 			},
 			expectError: false,
@@ -126,16 +131,16 @@ func TestCreateDatabase(t *testing.T) {
 		{
 			name: "empty account name",
 			input: CreateDatabaseToolInput{
-				Account:  "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database: "newTestDatabase",
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: CreateDatabaseToolInput{
-				Account:  "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database: "",
 			},
 			expectError:    true,
@@ -176,7 +181,7 @@ func TestListContainers(t *testing.T) {
 		// {
 		// 	name: "valid arguments",
 		// 	input: ListContainersToolInput{
-		// 		Account:  "dummy_account_does_not_matter",
+		// 		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		// 		Database: testOperationDBName,
 		// 	},
 		// 	expectError:    false,
@@ -185,16 +190,16 @@ func TestListContainers(t *testing.T) {
 		{
 			name: "empty account name",
 			input: ListContainersToolInput{
-				Account:  "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database: testOperationDBName,
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: ListContainersToolInput{
-				Account:  "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database: "",
 			},
 			expectError:    true,
@@ -233,7 +238,7 @@ func TestReadContainerMetadata(t *testing.T) {
 		{
 			name: "valid arguments",
 			input: ReadContainerMetadataToolInput{
-				Account:   "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:  testOperationDBName,
 				Container: testOperationContainerName,
 			},
@@ -242,17 +247,17 @@ func TestReadContainerMetadata(t *testing.T) {
 		{
 			name: "empty account name",
 			input: ReadContainerMetadataToolInput{
-				Account:   "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database:  testOperationDBName,
 				Container: testOperationContainerName,
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: ReadContainerMetadataToolInput{
-				Account:   "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:  "",
 				Container: testOperationContainerName,
 			},
@@ -262,7 +267,7 @@ func TestReadContainerMetadata(t *testing.T) {
 		{
 			name: "empty container name",
 			input: ReadContainerMetadataToolInput{
-				Account:   "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:  testOperationDBName,
 				Container: "",
 			},
@@ -318,7 +323,7 @@ func TestReadContainerMetadata_ThroughputScenarios(t *testing.T) {
 	// Create a container with manual throughput
 	manualContainerName := "testContainer_manual_throughput_diag"
 	_, _, err := CreateContainerToolHandler(ctx, nil, CreateContainerToolInput{
-		Account:          "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:         testOperationDBName,
 		Container:        manualContainerName,
 		PartitionKeyPath: "/id",
@@ -330,7 +335,7 @@ func TestReadContainerMetadata_ThroughputScenarios(t *testing.T) {
 		// Note: vNext emulator returns 400 for /offers endpoint (not implemented)
 		// so this test validates the "unknown" throughput type on emulator
 		toolResult, _, err := ReadContainerMetadataToolHandler(ctx, nil, ReadContainerMetadataToolInput{
-			Account:   "dummy_account_does_not_matter",
+			ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 			Database:  testOperationDBName,
 			Container: manualContainerName,
 		})
@@ -367,7 +372,7 @@ func TestReadContainerMetadata_ThroughputScenarios(t *testing.T) {
 		// Note: vNext emulator returns 400 for /offers endpoint
 		// On real Azure, a container without dedicated throughput returns 404 → "shared"
 		toolResult, _, err := ReadContainerMetadataToolHandler(ctx, nil, ReadContainerMetadataToolInput{
-			Account:   "dummy_account_does_not_matter",
+			ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 			Database:  testOperationDBName,
 			Container: testOperationContainerName,
 		})
@@ -404,7 +409,7 @@ func TestCreateContainer(t *testing.T) {
 		{
 			name: "valid arguments",
 			input: CreateContainerToolInput{
-				Account:          "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:         testOperationDBName,
 				Container:        "testContainer_new_1",
 				PartitionKeyPath: "/id",
@@ -414,7 +419,7 @@ func TestCreateContainer(t *testing.T) {
 		{
 			name: "valid arguments with throughput",
 			input: CreateContainerToolInput{
-				Account:          "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:         testOperationDBName,
 				Container:        "testContainer_new_2",
 				PartitionKeyPath: "/id",
@@ -425,18 +430,18 @@ func TestCreateContainer(t *testing.T) {
 		{
 			name: "empty account name",
 			input: CreateContainerToolInput{
-				Account:          "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database:         testOperationDBName,
 				Container:        "testContainer",
 				PartitionKeyPath: "/id",
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: CreateContainerToolInput{
-				Account:          "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:         "",
 				Container:        "testContainer",
 				PartitionKeyPath: "/id",
@@ -447,7 +452,7 @@ func TestCreateContainer(t *testing.T) {
 		{
 			name: "empty container name",
 			input: CreateContainerToolInput{
-				Account:          "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:         testOperationDBName,
 				Container:        "",
 				PartitionKeyPath: "/id",
@@ -458,7 +463,7 @@ func TestCreateContainer(t *testing.T) {
 		{
 			name: "empty partition key path",
 			input: CreateContainerToolInput{
-				Account:          "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:         testOperationDBName,
 				Container:        "testContainer",
 				PartitionKeyPath: "",
@@ -499,7 +504,7 @@ func TestAddItemToContainer(t *testing.T) {
 		{
 			name: "valid arguments",
 			input: AddItemToContainerToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "user1",
@@ -510,7 +515,7 @@ func TestAddItemToContainer(t *testing.T) {
 		// {
 		// 	name: "invalid partition key",
 		// 	input: AddItemToContainerToolInput{
-		// 		Account:      "dummy_account_does_not_matter",
+		// 		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		// 		Database:     testOperationDBName,
 		// 		Container:    testOperationContainerName,
 		// 		PartitionKey: "1",
@@ -522,7 +527,7 @@ func TestAddItemToContainer(t *testing.T) {
 		{
 			name: "missing id attribute",
 			input: AddItemToContainerToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "1",
@@ -534,19 +539,19 @@ func TestAddItemToContainer(t *testing.T) {
 		{
 			name: "empty account name",
 			input: AddItemToContainerToolInput{
-				Account:      "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "testPartitionKey",
 				Item:         `{"id": "testItem", "value": "testValue"}`,
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: AddItemToContainerToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     "",
 				Container:    testOperationContainerName,
 				PartitionKey: "testPartitionKey",
@@ -558,7 +563,7 @@ func TestAddItemToContainer(t *testing.T) {
 		{
 			name: "empty container name",
 			input: AddItemToContainerToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    "",
 				PartitionKey: "testPartitionKey",
@@ -570,7 +575,7 @@ func TestAddItemToContainer(t *testing.T) {
 		{
 			name: "empty partition key",
 			input: AddItemToContainerToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "",
@@ -582,7 +587,7 @@ func TestAddItemToContainer(t *testing.T) {
 		{
 			name: "empty item JSON",
 			input: AddItemToContainerToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "testPartitionKey",
@@ -620,7 +625,7 @@ func TestReadItem(t *testing.T) {
 
 	// First, add an item to the container to be read later
 	_, _, err := AddItemToContainerToolHandler(context.Background(), nil, AddItemToContainerToolInput{
-		Account:      "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:     testOperationDBName,
 		Container:    testOperationContainerName,
 		PartitionKey: partitionKeyValue,
@@ -638,7 +643,7 @@ func TestReadItem(t *testing.T) {
 		{
 			name: "valid arguments",
 			input: ReadItemToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				ItemID:       id,
@@ -649,19 +654,19 @@ func TestReadItem(t *testing.T) {
 		{
 			name: "empty account name",
 			input: ReadItemToolInput{
-				Account:      "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				ItemID:       "testItem",
 				PartitionKey: "testPartitionKey",
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: ReadItemToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     "",
 				Container:    testOperationContainerName,
 				ItemID:       "testItem",
@@ -673,7 +678,7 @@ func TestReadItem(t *testing.T) {
 		{
 			name: "empty container name",
 			input: ReadItemToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    "",
 				ItemID:       "testItem",
@@ -685,7 +690,7 @@ func TestReadItem(t *testing.T) {
 		{
 			name: "empty item ID",
 			input: ReadItemToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				ItemID:       "",
@@ -697,7 +702,7 @@ func TestReadItem(t *testing.T) {
 		{
 			name: "empty partition key",
 			input: ReadItemToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				ItemID:       "testItem",
@@ -738,7 +743,7 @@ func TestExecuteQuery(t *testing.T) {
 
 	// First, add an item to the container to query later
 	_, _, err := AddItemToContainerToolHandler(context.Background(), nil, AddItemToContainerToolInput{
-		Account:      "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:     testOperationDBName,
 		Container:    testOperationContainerName,
 		PartitionKey: partitionKeyValue,
@@ -756,7 +761,7 @@ func TestExecuteQuery(t *testing.T) {
 		{
 			name: "valid arguments with partition key",
 			input: ExecuteQueryToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				Query:        "SELECT * FROM c",
@@ -767,7 +772,7 @@ func TestExecuteQuery(t *testing.T) {
 		{
 			name: "valid arguments - no partition key",
 			input: ExecuteQueryToolInput{
-				Account:   "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:  testOperationDBName,
 				Container: testOperationContainerName,
 				Query:     "SELECT * FROM c",
@@ -777,18 +782,18 @@ func TestExecuteQuery(t *testing.T) {
 		{
 			name: "empty account name",
 			input: ExecuteQueryToolInput{
-				Account:   "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database:  testOperationDBName,
 				Container: testOperationContainerName,
 				Query:     "SELECT * FROM c",
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: ExecuteQueryToolInput{
-				Account:   "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:  "",
 				Container: testOperationContainerName,
 				Query:     "SELECT * FROM c",
@@ -799,7 +804,7 @@ func TestExecuteQuery(t *testing.T) {
 		{
 			name: "empty container name",
 			input: ExecuteQueryToolInput{
-				Account:   "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:  testOperationDBName,
 				Container: "",
 				Query:     "SELECT * FROM c",
@@ -810,7 +815,7 @@ func TestExecuteQuery(t *testing.T) {
 		{
 			name: "empty query string",
 			input: ExecuteQueryToolInput{
-				Account:   "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:  testOperationDBName,
 				Container: testOperationContainerName,
 				Query:     "",
@@ -850,7 +855,7 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "valid batch with multiple items",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "batch_pk_1",
@@ -866,7 +871,7 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "valid batch with single item",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "batch_pk_2",
@@ -880,19 +885,19 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "empty account name",
 			input: BatchCreateItemsToolInput{
-				Account:      "",
+				ConnectionConfig: ConnectionConfig{Account: ""},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "batch_pk",
 				Items:        []string{`{"id": "item1", "value": "test"}`},
 			},
 			expectError:    true,
-			expectedErrMsg: "cosmos db account name missing",
+			expectedErrMsg: "account name is required",
 		},
 		{
 			name: "empty database name",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     "",
 				Container:    testOperationContainerName,
 				PartitionKey: "batch_pk",
@@ -904,7 +909,7 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "empty container name",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    "",
 				PartitionKey: "batch_pk",
@@ -916,7 +921,7 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "empty partition key",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "",
@@ -928,7 +933,7 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "empty items array",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "batch_pk",
@@ -940,7 +945,7 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "exceeds 100 items limit",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "batch_pk",
@@ -952,7 +957,7 @@ func TestBatchCreateItems(t *testing.T) {
 		{
 			name: "missing id in item",
 			input: BatchCreateItemsToolInput{
-				Account:      "dummy_account_does_not_matter",
+				ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 				Database:     testOperationDBName,
 				Container:    testOperationContainerName,
 				PartitionKey: "batch_pk_3",
@@ -993,7 +998,7 @@ func TestBatchCreateItems_DuplicateId(t *testing.T) {
 
 	// First, create an item
 	_, _, err := AddItemToContainerToolHandler(context.Background(), nil, AddItemToContainerToolInput{
-		Account:      "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:     testOperationDBName,
 		Container:    testOperationContainerName,
 		PartitionKey: partitionKey,
@@ -1003,7 +1008,7 @@ func TestBatchCreateItems_DuplicateId(t *testing.T) {
 
 	// Now try to batch create items including the duplicate
 	_, _, err = BatchCreateItemsToolHandler(context.Background(), nil, BatchCreateItemsToolInput{
-		Account:      "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:     testOperationDBName,
 		Container:    testOperationContainerName,
 		PartitionKey: partitionKey,
@@ -1025,7 +1030,7 @@ func TestBatchCreateItems_MaxLimit(t *testing.T) {
 	items := generateItemsArrayWithPrefix(100, partitionKey)
 
 	_, response, err := BatchCreateItemsToolHandler(context.Background(), nil, BatchCreateItemsToolInput{
-		Account:      "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:     testOperationDBName,
 		Container:    testOperationContainerName,
 		PartitionKey: partitionKey,

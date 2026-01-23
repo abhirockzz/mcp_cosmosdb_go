@@ -13,12 +13,12 @@ func ListDatabases() *mcp.Tool {
 
 	return &mcp.Tool{
 		Name:        "list_databases",
-		Description: "List all databases in the specified Azure Cosmos DB account",
+		Description: "List all databases in the specified Azure Cosmos DB account or local emulator. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service.",
 	}
 }
 
 type ListDatabasesToolInput struct {
-	Account string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 }
 
 type ListDatabasesToolResult struct {
@@ -28,13 +28,13 @@ type ListDatabasesToolResult struct {
 
 func ListDatabasesToolHandler(ctx context.Context, request *mcp.CallToolRequest, input ListDatabasesToolInput) (*mcp.CallToolResult, ListDatabasesToolResult, error) {
 
-	if input.Account == "" {
-		return nil, ListDatabasesToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, ListDatabasesToolResult{}, err
 	}
 
 	databaseNames := []string{}
 
-	client, err := GetCosmosClientFunc(input.Account)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, ListDatabasesToolResult{}, err
 	}
@@ -58,12 +58,12 @@ func ListDatabasesToolHandler(ctx context.Context, request *mcp.CallToolRequest,
 func CreateDatabase() *mcp.Tool {
 	return &mcp.Tool{
 		Name:        "create_database",
-		Description: "Create a new database in the specified Azure Cosmos DB account",
+		Description: "Create a new database in the specified Azure Cosmos DB account or local emulator. Set useEmulator to true to connect to the local Cosmos DB emulator instead of Azure service.",
 	}
 }
 
 type CreateDatabaseToolInput struct {
-	Account  string `json:"account" jsonschema:"Azure Cosmos DB account name"`
+	ConnectionConfig
 	Database string `json:"database" jsonschema:"Name of the database to create"`
 }
 
@@ -75,15 +75,15 @@ type CreateDatabaseToolResult struct {
 
 func CreateDatabaseToolHandler(ctx context.Context, request *mcp.CallToolRequest, input CreateDatabaseToolInput) (*mcp.CallToolResult, CreateDatabaseToolResult, error) {
 
-	if input.Account == "" {
-		return nil, CreateDatabaseToolResult{}, errors.New("cosmos db account name missing")
+	if err := input.Validate(); err != nil {
+		return nil, CreateDatabaseToolResult{}, err
 	}
 
 	if input.Database == "" {
 		return nil, CreateDatabaseToolResult{}, errors.New("database name missing")
 	}
 
-	client, err := GetCosmosClientFunc(input.Account)
+	client, err := input.GetClient()
 	if err != nil {
 		return nil, CreateDatabaseToolResult{}, err
 	}

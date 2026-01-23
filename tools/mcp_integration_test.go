@@ -212,7 +212,7 @@ func TestMCPIntegration_ReadItem(t *testing.T) {
 	partitionKeyValue := "mcp_test_user1"
 
 	_, _, err := AddItemToContainerToolHandler(ctx, nil, AddItemToContainerToolInput{
-		Account:      "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:     testOperationDBName,
 		Container:    testOperationContainerName,
 		PartitionKey: partitionKeyValue,
@@ -505,7 +505,7 @@ func TestMCPIntegration_ExecuteQuery(t *testing.T) {
 	// First, add an item to the container to query later
 	itemID := "mcp_query_test_item"
 	_, _, err := AddItemToContainerToolHandler(ctx, nil, AddItemToContainerToolInput{
-		Account:      "dummy_account_does_not_matter",
+		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
 		Database:     testOperationDBName,
 		Container:    testOperationContainerName,
 		PartitionKey: itemID,
