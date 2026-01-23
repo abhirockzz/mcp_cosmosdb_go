@@ -154,7 +154,7 @@ func TestConnectionConfig_IsEmulatorMode(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "default is service mode",
+			name:     "is service mode",
 			config:   ConnectionConfig{},
 			expected: false,
 		},

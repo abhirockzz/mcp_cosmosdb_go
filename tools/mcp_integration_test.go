@@ -213,10 +213,10 @@ func TestMCPIntegration_ReadItem(t *testing.T) {
 
 	_, _, err := AddItemToContainerToolHandler(ctx, nil, AddItemToContainerToolInput{
 		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
-		Database:     testOperationDBName,
-		Container:    testOperationContainerName,
-		PartitionKey: partitionKeyValue,
-		Item:         `{"id": "mcp_test_user1", "email": "mcp_test_user1@example.com", "name": "MCP Test User"}`,
+		Database:         testOperationDBName,
+		Container:        testOperationContainerName,
+		PartitionKey:     partitionKeyValue,
+		Item:             `{"id": "mcp_test_user1", "email": "mcp_test_user1@example.com", "name": "MCP Test User"}`,
 	})
 	require.NoError(t, err, "Failed to add test item")
 
@@ -506,10 +506,10 @@ func TestMCPIntegration_ExecuteQuery(t *testing.T) {
 	itemID := "mcp_query_test_item"
 	_, _, err := AddItemToContainerToolHandler(ctx, nil, AddItemToContainerToolInput{
 		ConnectionConfig: ConnectionConfig{Account: "dummy_account_does_not_matter"},
-		Database:     testOperationDBName,
-		Container:    testOperationContainerName,
-		PartitionKey: itemID,
-		Item:         `{"id": "mcp_query_test_item", "department": "Engineering", "email": "query_test@example.com"}`,
+		Database:         testOperationDBName,
+		Container:        testOperationContainerName,
+		PartitionKey:     itemID,
+		Item:             `{"id": "mcp_query_test_item", "department": "Engineering", "email": "query_test@example.com"}`,
 	})
 	require.NoError(t, err, "Failed to add test item")
 

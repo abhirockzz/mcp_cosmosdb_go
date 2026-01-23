@@ -12,7 +12,7 @@ import (
 )
 
 // DefaultEmulatorEndpoint is the default endpoint for the Cosmos DB emulator
-const DefaultEmulatorEndpoint = "https://localhost:8081"
+const DefaultEmulatorEndpoint = "http://localhost:8081"
 
 // EmulatorKey is the well-known key for the Cosmos DB emulator
 const EmulatorKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
@@ -22,7 +22,7 @@ const EmulatorKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8m
 type ConnectionConfig struct {
 	Account          string `json:"account,omitempty" jsonschema:"Azure Cosmos DB account name (required when not using emulator)"`
 	UseEmulator      bool   `json:"useEmulator,omitempty" jsonschema:"Set to true to use local Cosmos DB emulator instead of Azure service"`
-	EmulatorEndpoint string `json:"emulatorEndpoint,omitempty" jsonschema:"Emulator endpoint URL (default: https://localhost:8081)"`
+	EmulatorEndpoint string `json:"emulatorEndpoint,omitempty" jsonschema:"Emulator endpoint URL (default: http://localhost:8081)"`
 }
 
 // Validate checks if the connection config is valid
