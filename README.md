@@ -16,9 +16,9 @@ It works with the Azure Cosmos DB service and the [vNext emulator](https://learn
 
 ⚠️ This project is not intended to replace the [Azure MCP Server](https://github.com/azure/azure-mcp) or [Azure Cosmos DB MCP Toolkit](https://github.com/AzureCosmosDB/MCPToolKit). Rather, it serves as an experimental **learning tool** that demonstrates how to combine the Azure Go SDK and MCP Go SDK to build AI tooling for Azure Cosmos DB.
 
-▶️ Here is a demo using [Agent Mode in Visual Studio Code](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode):
+▶️ Here is a demo using GitHub Copilot CLI, but same would work with [Agent Mode in Visual Studio Code](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode), or any other MCP compatible tool (Claude Code, etc.):
 
-[![MCP server demo](images/mcp_demo.png)](https://abhirockzz.github.io/videos/mcp_server_demo.mp4)
+[![MCP server demo](https://img.youtube.com/vi/l6gSYNd1Txs/hqdefault.jpg)](https://www.youtube.com/watch?v=l6gSYNd1Txs)
 
 ## 🚀 How to Run
 
@@ -96,6 +96,8 @@ Here is an example of the `mcp.json` configuration for the `stdio` mode:
 Once you have configured the MCP server in your tool, you can start using it to interact with Azure Cosmos DB (just like in the demo shown above). For other tools like Claude Code, Claude Desktop, etc., refer to their respective documentation on how to configure an MCP HTTP/`stdio` server.
 
 > Large Language Models (LLMs) are non-deterministic by nature and can make mistakes. **Always validate** the results and queries before making any decisions based on them.
+
+For both the cases, if you want to use the vNext emulator, make sure its already running on your machine - `docker run -p 8081:8081 -p 1234:1234 mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview`
 
 ### ☁️ Remote endpoint
 
