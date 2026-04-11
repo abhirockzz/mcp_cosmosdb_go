@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Server for Azure Cosmos DB — Go</title>
+  <meta name="description" content="A Go-based MCP server for Azure Cosmos DB. Connect AI assistants to your Cosmos DB data using the Model Context Protocol.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <span class="nav-brand">Azure Cosmos DB MCP Server</span>
+      <div class="nav-links">
+        <a href="#tools" class="nav-hide-mobile">Tools</a>
+        <a href="#quickstart" class="nav-hide-mobile">Quick Start</a>
+        <a href="#demo">Demo</a>
+        <a href="https://devblogs.microsoft.com/cosmosdb/build-ai-tooling-in-go-with-the-mcp-sdk-connecting-ai-apps-to-databases/" target="_blank" rel="noopener">Blog</a>
+        <a href="https://github.com/abhirockzz/mcp_cosmosdb_go" target="_blank" rel="noopener">GitHub</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+          <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none;">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1>AI Agents meet <span class="accent">Azure Cosmos DB</span><br>via the Model Context Protocol</h1>
+      <p class="subtitle">A lightweight Go server that gives AI assistants — GitHub Copilot, Claude, and others — direct access to your Cosmos DB databases, containers, and items through MCP.</p>
+      <div class="hero-actions">
+        <a href="#quickstart" class="btn btn-primary">Get Started</a>
+        <a href="https://github.com/abhirockzz/mcp_cosmosdb_go" target="_blank" rel="noopener" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo -->
+  <section id="demo">
+    <div class="container">
+      <div class="section-header fade-up">
+        <p class="section-label">See it in action</p>
+        <h2 class="section-title">Demo</h2>
+        <p class="section-desc">Watch the MCP server being used with GitHub Copilot CLI to create databases, containers, and add items — all through natural language.</p>
+      </div>
+      <div class="demo-content">
+        <a href="https://www.youtube.com/watch?v=l6gSYNd1Txs" target="_blank" rel="noopener" class="video-wrapper fade-up" style="display:block;">
+          <img src="https://img.youtube.com/vi/l6gSYNd1Txs/maxresdefault.jpg" alt="Watch the MCP server demo on YouTube" style="width:100%;border-radius:12px;border:1px solid var(--border);" loading="lazy">
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Works With -->
+  <section id="works-with">
+    <div class="container">
+      <div class="section-header fade-up">
+        <p class="section-label">Compatibility</p>
+        <h2 class="section-title">Works with</h2>
+        <p class="section-desc">Use the same MCP server against the cloud service or a local emulator — no code changes needed.</p>
+      </div>
+      <div class="works-with-grid fade-up">
+        <div class="works-with-card">
+          <div class="works-with-icon">☁</div>
+          <h3>Azure Cosmos DB</h3>
+          <p>Connect to your Cosmos DB account. Authenticates via DefaultAzureCredential — Azure CLI, Managed Identity, and more.</p>
+        </div>
+        <div class="works-with-card">
+          <div class="works-with-icon">⬡</div>
+          <h3>vNext Emulator</h3>
+          <p>Run the Linux-based vNext emulator locally via Docker for fast, offline development and testing — no Azure account required.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What is MCP -->
+  <section id="about">
+    <div class="container">
+      <div class="section-header fade-up">
+        <p class="section-label">Context</p>
+        <h2 class="section-title">What is the Model Context Protocol?</h2>
+      </div>
+      <div class="mcp-explainer fade-up">
+        <p><strong>MCP (Model Context Protocol)</strong> is an open standard that lets AI applications connect to external data sources and tools through a unified interface. Instead of custom integrations for every service, MCP provides a single protocol that any AI assistant can speak.</p>
+        <br>
+        <p>This server implements MCP for <strong>Azure Cosmos DB</strong>, giving any MCP-compatible AI tool — VS Code Copilot, Claude Desktop, Claude Code, and others — the ability to list databases, query data, create containers, and manage items using natural language.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tools -->
+  <section id="tools">
+    <div class="container">
+      <div class="section-header fade-up">
+        <p class="section-label">Capabilities</p>
+        <h2 class="section-title">9 tools for Cosmos DB</h2>
+        <p class="section-desc">Everything you need to manage databases, containers, and items — exposed as MCP tools that AI assistants can invoke.</p>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card fade-up">
+          <div class="tool-icon">⊞</div>
+          <h3>List Databases</h3>
+          <p>Retrieve all databases in your Cosmos DB account.</p>
+          <code>list_databases</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">+</div>
+          <h3>Create Database</h3>
+          <p>Create a new database in the account.</p>
+          <code>create_database</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">☰</div>
+          <h3>List Containers</h3>
+          <p>List all containers in a specific database.</p>
+          <code>list_containers</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">ℹ</div>
+          <h3>Read Container Metadata</h3>
+          <p>Fetch configuration and metadata for a container.</p>
+          <code>read_container_metadata</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">◧</div>
+          <h3>Create Container</h3>
+          <p>Create a container with a defined partition key.</p>
+          <code>create_container</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">↥</div>
+          <h3>Add Item</h3>
+          <p>Add a JSON item to a container.</p>
+          <code>add_item_to_container</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">◉</div>
+          <h3>Read Item</h3>
+          <p>Get an item by its ID and partition key.</p>
+          <code>read_item</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">⟩</div>
+          <h3>Execute Query</h3>
+          <p>Run SQL queries with optional partition key scoping.</p>
+          <code>execute_query</code>
+        </div>
+        <div class="tool-card fade-up">
+          <div class="tool-icon">⟫</div>
+          <h3>Batch Create Items</h3>
+          <p>Add multiple items using transactional batch operations.</p>
+          <code>batch_create_items</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how-it-works">
+    <div class="container">
+      <div class="section-header fade-up">
+        <p class="section-label">Architecture</p>
+        <h2 class="section-title">How it works</h2>
+        <p class="section-desc">A single Go binary sits between your AI assistant and Azure Cosmos DB, translating natural language into database operations.</p>
+      </div>
+      <div class="architecture-diagram fade-up">
+        <div class="arch-box">
+          <div class="arch-label">Client</div>
+          <div class="arch-name">AI Agent</div>
+          <div class="arch-detail">Copilot · Claude · Any MCP client</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box" style="border-color: var(--accent);">
+          <div class="arch-label">Server</div>
+          <div class="arch-name" style="color: var(--accent);">MCP Server</div>
+          <div class="arch-detail">Go binary · HTTP or stdio</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box">
+          <div class="arch-label">Data</div>
+          <div class="arch-name">Azure Cosmos DB</div>
+          <div class="arch-detail">Service or vNext Emulator</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section id="quickstart">
+    <div class="container">
+      <div class="section-header fade-up">
+        <p class="section-label">Get Started</p>
+        <h2 class="section-title">Quick Start</h2>
+        <p class="section-desc">Build the binary, pick a transport mode, and point your MCP client at it.</p>
+      </div>
+
+      <div class="quick-start-steps fade-up">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Clone and build</h4>
+            <p>Clone the repo and compile the Go binary.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Authenticate</h4>
+            <p>Login via <code>az login</code> or <code>azd auth login</code>. The server uses <code>DefaultAzureCredential</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Configure your MCP client</h4>
+            <p>Add the server to your <code>mcp.json</code> (VS Code) or equivalent config. Choose HTTP or stdio mode:</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="fade-up">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="http">HTTP mode</button>
+          <button class="tab-btn" data-tab="stdio">stdio mode</button>
+          <button class="tab-btn" data-tab="build">Build</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-http">
+          <pre><span class="comment">// mcp.json — HTTP transport</span>
+{
+  <span class="key">"servers"</span>: {
+    <span class="key">"mcp_azure_cosmosdb_go_http"</span>: {
+      <span class="key">"type"</span>: <span class="string">"http"</span>,
+      <span class="key">"url"</span>: <span class="string">"http://localhost:9090"</span>
+    }
+  }
+}
+
+<span class="comment">// Start the server:</span>
+<span class="keyword">export</span> COSMOSDB_MCP_SERVER_MODE=http
+./mcp_azure_cosmosdb_go</pre>
+        </div>
+
+        <div class="tab-panel" id="tab-stdio">
+          <pre><span class="comment">// mcp.json — stdio transport</span>
+{
+  <span class="key">"servers"</span>: {
+    <span class="key">"mcp_azure_cosmosdb_go_stdio"</span>: {
+      <span class="key">"type"</span>: <span class="string">"stdio"</span>,
+      <span class="key">"command"</span>: <span class="string">"./mcp_azure_cosmosdb_go"</span>
+    }
+  }
+}</pre>
+        </div>
+
+        <div class="tab-panel" id="tab-build">
+          <pre><span class="comment"># Clone the repository</span>
+<span class="keyword">git clone</span> https://github.com/abhirockzz/mcp_cosmosdb_go
+<span class="keyword">cd</span> mcp_cosmosdb_go
+
+<span class="comment"># Build the binary</span>
+<span class="keyword">go build</span> -o mcp_azure_cosmosdb_go main.go
+
+<span class="comment"># Or use the Makefile</span>
+<span class="keyword">make</span> build</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-disclaimer">
+        This is an experimental project for learning purposes and is not officially supported by Microsoft.
+      </div>
+      <div class="footer-left">
+        Built by <a href="https://github.com/abhirockzz" target="_blank" rel="noopener">Abhishek Gupta</a>
+      </div>
+
+    </div>
+  </footer>
+
+  <script>
+    // Theme toggle
+    (function() {
+      const toggle = document.getElementById('themeToggle');
+      const iconSun = document.getElementById('iconSun');
+      const iconMoon = document.getElementById('iconMoon');
+      const html = document.documentElement;
+
+      function setTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        if (theme === 'light') {
+          iconSun.style.display = 'none';
+          iconMoon.style.display = 'block';
+        } else {
+          iconSun.style.display = 'block';
+          iconMoon.style.display = 'none';
+        }
+      }
+
+      // Init: check localStorage, then OS preference
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        setTheme(saved);
+      } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+        setTheme('light');
+      }
+
+      toggle.addEventListener('click', function() {
+        const current = html.getAttribute('data-theme');
+        setTheme(current === 'light' ? 'dark' : 'light');
+      });
+    })();
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tabId = this.getAttribute('data-tab');
+        this.parentElement.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        this.parentElement.parentElement.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        document.getElementById('tab-' + tabId).classList.add('active');
+      });
+    });
+
+    // Scroll-triggered fade-up
+    (function() {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+      document.querySelectorAll('.fade-up').forEach(function(el) {
+        observer.observe(el);
+      });
+    })();
+  </script>
+
+</body>
+</html>
